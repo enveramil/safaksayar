@@ -23,17 +23,89 @@ class _UserInputPageState extends State<UserInputPage> {
   final _izinController = TextEditingController();
   final _cezaController = TextEditingController();
 
-
   // Türkiye'nin 81 ili
   final List<String> iller = [
-    "Adana", "Adıyaman", "Afyon", "Ağrı", "Aksaray", "Amasya", "Ankara", "Antalya", "Ardahan", "Artvin", "Aydın",
-    "Balıkesir", "Bartın", "Batman", "Bayburt", "Bilecik", "Bingöl", "Bitlis", "Bolu", "Burdur", "Bursa", "Çanakkale",
-    "Çankırı", "Çorum", "Denizli", "Diyarbakır", "Düzce", "Edirne", "Elazığ", "Erzincan", "Erzurum", "Eskişehir", "Gaziantep",
-    "Giresun", "Gümüşhane", "Hakkari", "Hatay", "Iğdır", "Isparta", "İstanbul", "İzmir", "Kahramanmaraş", "Karabük",
-    "Karaman", "Kars", "Kastamonu", "Kayseri", "Kırıkkale", "Kırklareli", "Kırşehir", "Kilis", "Kocaeli", "Konya", "Kütahya",
-    "Malatya", "Manisa", "Mardin", "Mersin", "Muğla", "Muş", "Nevşehir", "Niğde", "Ordu", "Osmaniye", "Rize", "Sakarya",
-    "Samsun", "Siirt", "Sinop", "Sivas", "Şanlıurfa", "Şırnak", "Tekirdağ", "Tokat", "Trabzon", "Tunceli", "Uşak", "Van",
-    "Yalova", "Yozgat", "Zonguldak"
+    "Adana",
+    "Adıyaman",
+    "Afyon",
+    "Ağrı",
+    "Aksaray",
+    "Amasya",
+    "Ankara",
+    "Antalya",
+    "Ardahan",
+    "Artvin",
+    "Aydın",
+    "Balıkesir",
+    "Bartın",
+    "Batman",
+    "Bayburt",
+    "Bilecik",
+    "Bingöl",
+    "Bitlis",
+    "Bolu",
+    "Burdur",
+    "Bursa",
+    "Çanakkale",
+    "Çankırı",
+    "Çorum",
+    "Denizli",
+    "Diyarbakır",
+    "Düzce",
+    "Edirne",
+    "Elazığ",
+    "Erzincan",
+    "Erzurum",
+    "Eskişehir",
+    "Gaziantep",
+    "Giresun",
+    "Gümüşhane",
+    "Hakkari",
+    "Hatay",
+    "Iğdır",
+    "Isparta",
+    "İstanbul",
+    "İzmir",
+    "Kahramanmaraş",
+    "Karabük",
+    "Karaman",
+    "Kars",
+    "Kastamonu",
+    "Kayseri",
+    "Kırıkkale",
+    "Kırklareli",
+    "Kırşehir",
+    "Kilis",
+    "Kocaeli",
+    "Konya",
+    "Kütahya",
+    "Malatya",
+    "Manisa",
+    "Mardin",
+    "Mersin",
+    "Muğla",
+    "Muş",
+    "Nevşehir",
+    "Niğde",
+    "Ordu",
+    "Osmaniye",
+    "Rize",
+    "Sakarya",
+    "Samsun",
+    "Siirt",
+    "Sinop",
+    "Sivas",
+    "Şanlıurfa",
+    "Şırnak",
+    "Tekirdağ",
+    "Tokat",
+    "Trabzon",
+    "Tunceli",
+    "Uşak",
+    "Van",
+    "Yalova",
+    "Yozgat",
+    "Zonguldak"
   ];
 
   @override
@@ -46,7 +118,9 @@ class _UserInputPageState extends State<UserInputPage> {
   Future<void> _pickDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(), // Eğer daha önce tarih seçilmişse initialDate olarak gösterilir
+      initialDate: _selectedDate ??
+          DateTime
+              .now(), // Eğer daha önce tarih seçilmişse initialDate olarak gösterilir
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
@@ -57,7 +131,6 @@ class _UserInputPageState extends State<UserInputPage> {
     }
   }
 
-
   Future<void> _loadData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -65,11 +138,14 @@ class _UserInputPageState extends State<UserInputPage> {
       _surnameController.text = prefs.getString('surname') ?? '';
       _selectedAskerlikYeri = prefs.getString('askerlik_yeri');
       _selectedMemleket = prefs.getString('memleket');
-      _selectedKuvvetKomutanligi = prefs.getString('kuvvet_komutanligi'); // Yeni eklenen alan
+      _selectedKuvvetKomutanligi =
+          prefs.getString('kuvvet_komutanligi'); // Yeni eklenen alan
       String? storedDate = prefs.getString('sulus_tarihi');
       rutbe = prefs.getString('rutbe');
-      _izinController.text = prefs.getInt('izin')?.toString() ?? '';  // Load izin
-      _cezaController.text = prefs.getInt('ceza')?.toString() ?? '';  // Load ceza
+      _izinController.text =
+          prefs.getInt('izin')?.toString() ?? '0'; // Load izin
+      _cezaController.text =
+          prefs.getInt('ceza')?.toString() ?? '0'; // Load ceza
       // Ensure this line retrieves the correct key
       selectedDuration = prefs.getInt('duration'); // Correct key name
       if (storedDate != null) {
@@ -85,14 +161,18 @@ class _UserInputPageState extends State<UserInputPage> {
     // Calculate the end date by adding the selected duration (in months) to the selected sülüs date
     if (_selectedDate != null && selectedDuration != null) {
       // Toplam süreyi hesapla (izin ve ceza günleri eklenmiş)
-      int izinGunu = int.tryParse(_izinController.text) ?? 0;  // Kullanılan izin günleri
-      int cezaGunu = int.tryParse(_cezaController.text) ?? 0;  // Alınan ceza günleri
+      int izinGunu = int.tryParse(_izinController.text ?? '0') ??
+          0; // Kullanılan izin günleri
+      int cezaGunu =
+          int.tryParse(_cezaController.text ?? '0') ?? 0; // Alınan ceza günleri
 
       // Süreyi, izin ve ceza günlerini hesaba katarak bitiş tarihini hesapla
       DateTime endDate = DateTime(
         _selectedDate!.year,
         _selectedDate!.month + selectedDuration!,
-        _selectedDate!.day + izinGunu + cezaGunu,  // İzin ve ceza günleri eklendi
+        _selectedDate!.day +
+            izinGunu +
+            cezaGunu, // İzin ve ceza günleri eklendi
       );
 
       // Verileri kaydet
@@ -100,7 +180,8 @@ class _UserInputPageState extends State<UserInputPage> {
       await prefs.setString('surname', _surnameController.text);
       await prefs.setString('askerlik_yeri', _selectedAskerlikYeri ?? '');
       await prefs.setString('memleket', _selectedMemleket ?? '');
-      await prefs.setString('kuvvet_komutanligi', _selectedKuvvetKomutanligi ?? '');
+      await prefs.setString(
+          'kuvvet_komutanligi', _selectedKuvvetKomutanligi ?? '');
       await prefs.setString(
           'sulus_tarihi', _selectedDate?.toIso8601String() ?? '');
       await prefs.setInt('duration', selectedDuration!);
@@ -108,22 +189,22 @@ class _UserInputPageState extends State<UserInputPage> {
       // Güncellenmiş terhis tarihini kaydet
       await prefs.setString('end_date', endDate.toIso8601String());
       await prefs.setString('rutbe', rutbe ?? '');
-      await prefs.setInt('izin', izinGunu);  // Kullanılan izin günlerini kaydet
-      await prefs.setInt('ceza', cezaGunu);  // Alınan ceza günlerini kaydet
+      await prefs.setInt(
+          'izin', izinGunu ?? 0); // Kullanılan izin günlerini kaydet
+      await prefs.setInt('ceza', cezaGunu ?? 0); // Alınan ceza günlerini kaydet
     }
   }
-
 
   // Formu göndermek ve başka bir sayfaya yönlendirmek
   void _submitForm() async {
     if (_nameController.text.isNotEmpty &&
         _surnameController.text.isNotEmpty &&
-        _selectedDate != null &&  selectedDuration != null &&
+        _selectedDate != null &&
+        selectedDuration != null &&
         _selectedAskerlikYeri != null &&
         _selectedMemleket != null &&
-        _selectedKuvvetKomutanligi != null
-      && rutbe != null
-    ) {
+        _selectedKuvvetKomutanligi != null &&
+        rutbe != null) {
       await _saveData(); // Verileri kaydet
 
       Navigator.pushReplacement(
@@ -138,13 +219,11 @@ class _UserInputPageState extends State<UserInputPage> {
     }
   }
 
-
   @override
   void dispose() {
     // TODO: implement dispose
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +232,8 @@ class _UserInputPageState extends State<UserInputPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        title: Text('Kullanıcı Veri Girişi'),),
+        title: Text('Kullanıcı Veri Girişi'),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -170,15 +250,17 @@ class _UserInputPageState extends State<UserInputPage> {
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey),
-                  color: Colors.blueAccent
-                ),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey),
+                    color: Colors.blueAccent),
                 child: Text(
                   _selectedDate == null
                       ? 'Sülüs Tarihini Seçin'
                       : 'Seçilen Tarih: ${DateFormat('dd.MM.yyyy').format(_selectedDate!)}',
-                  style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -206,7 +288,6 @@ class _UserInputPageState extends State<UserInputPage> {
             SizedBox(height: 12),
             buildDropdown(
               label: 'Askerlik Yeri',
-
               value: _selectedAskerlikYeri,
               hint: 'Askerlik Yeri Seçin',
               items: iller,
@@ -219,7 +300,6 @@ class _UserInputPageState extends State<UserInputPage> {
             SizedBox(height: 12),
             buildDropdown(
               label: 'Memleket',
-
               value: _selectedMemleket,
               hint: 'Memleket Seçin',
               items: iller,
@@ -232,7 +312,6 @@ class _UserInputPageState extends State<UserInputPage> {
             SizedBox(height: 12),
             buildDropdown(
               label: 'Kuvvet Komutanlığı',
-
               value: _selectedKuvvetKomutanligi,
               hint: 'Kuvvet Komutanlığı Seçin',
               items: ['Hava', 'Deniz', 'Kara', 'Jandarma'],
@@ -247,7 +326,15 @@ class _UserInputPageState extends State<UserInputPage> {
               label: 'Rütbe',
               value: rutbe,
               hint: 'Rütbe Seçin',
-              items: ['ER', 'ONBAŞI', 'ÇAVUŞ', 'ASTÇAVUŞ', 'ASTSUBAY', 'ASTEĞMEN', 'TEĞMEN'],
+              items: [
+                'ER',
+                'ONBAŞI',
+                'ÇAVUŞ',
+                'ASTÇAVUŞ',
+                'ASTSUBAY',
+                'ASTEĞMEN',
+                'TEĞMEN'
+              ],
               onChanged: (value) {
                 setState(() {
                   rutbe = value;
@@ -257,7 +344,6 @@ class _UserInputPageState extends State<UserInputPage> {
             SizedBox(height: 12),
             buildDropdown(
               label: 'Askerlik Süresi',
-
               value: selectedDuration != null ? '$selectedDuration Ay' : null,
               hint: 'Süre Seç',
               items: [1, 6, 12].map((e) => '$e Ay').toList(),
@@ -275,8 +361,10 @@ class _UserInputPageState extends State<UserInputPage> {
                 backgroundColor: MaterialStateProperty.all(Colors.blueAccent),
                 foregroundColor: MaterialStateProperty.all(Colors.white),
                 elevation: MaterialStateProperty.all(8),
-                shadowColor: MaterialStateProperty.all(Colors.black.withOpacity(0.5)),
-                padding: MaterialStateProperty.all(EdgeInsets.symmetric(horizontal: 30, vertical: 10)),
+                shadowColor:
+                    MaterialStateProperty.all(Colors.black.withOpacity(0.5)),
+                padding: MaterialStateProperty.all(
+                    EdgeInsets.symmetric(horizontal: 30, vertical: 10)),
                 minimumSize: MaterialStateProperty.all(Size(150, 50)),
                 shape: MaterialStateProperty.all(
                   RoundedRectangleBorder(
@@ -303,8 +391,6 @@ class _UserInputPageState extends State<UserInputPage> {
                 ],
               ),
             ),
-
-
           ],
         ),
       ),
@@ -327,7 +413,8 @@ class _UserInputPageState extends State<UserInputPage> {
         ),
         hintText: 'Enter $label',
         hintStyle: TextStyle(color: Colors.grey[500]), // Subtle grey hint color
-        prefixIcon: Icon(Icons.edit, color: Colors.grey[600]), // Neutral icon color
+        prefixIcon:
+            Icon(Icons.edit, color: Colors.grey[600]), // Neutral icon color
         filled: true,
         fillColor: Colors.grey[100], // Broken white background
         border: OutlineInputBorder(
@@ -348,8 +435,6 @@ class _UserInputPageState extends State<UserInputPage> {
     );
   }
 
-
-
   Widget buildDropdown({
     required String? value,
     required String hint,
@@ -362,12 +447,14 @@ class _UserInputPageState extends State<UserInputPage> {
         Expanded(
           flex: 1,
           child: Container(
-            height: 56, // İki container'ın yüksekliğini eşitlemek için sabit bir yükseklik
+            height:
+                56, // İki container'ın yüksekliğini eşitlemek için sabit bir yükseklik
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             decoration: BoxDecoration(
               color: Colors.grey[100], // Dropdown arka plan rengi
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!, width: 1.5), // Soft border color
+              border: Border.all(
+                  color: Colors.grey[300]!, width: 1.5), // Soft border color
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(0.1), // Light shadow for depth
@@ -376,7 +463,8 @@ class _UserInputPageState extends State<UserInputPage> {
                 ),
               ],
             ),
-            child: Align( // Label'ı sola yaslamak için Align widget'ı
+            child: Align(
+              // Label'ı sola yaslamak için Align widget'ı
               alignment: Alignment.centerLeft, // Sola yaslamak için
               child: Text(
                 label,
@@ -397,7 +485,8 @@ class _UserInputPageState extends State<UserInputPage> {
             decoration: BoxDecoration(
               color: Colors.grey[100], // Dropdown arka plan rengi
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!, width: 1.5), // Soft border color
+              border: Border.all(
+                  color: Colors.grey[300]!, width: 1.5), // Soft border color
               boxShadow: [
                 BoxShadow(
                   color: Colors.grey.withOpacity(0.1), // Light shadow for depth
@@ -412,9 +501,11 @@ class _UserInputPageState extends State<UserInputPage> {
                 value: value,
                 hint: Text(
                   hint,
-                  style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                      color: Colors.grey[600], fontWeight: FontWeight.w500),
                 ),
-                icon: Icon(Icons.arrow_drop_down, color: Colors.grey[600]), // Neutral icon color
+                icon: Icon(Icons.arrow_drop_down,
+                    color: Colors.grey[600]), // Neutral icon color
                 items: items.map((String item) {
                   return DropdownMenuItem<String>(
                     value: item,
@@ -434,12 +525,4 @@ class _UserInputPageState extends State<UserInputPage> {
       ],
     );
   }
-
-
-
-
-
-
-
-
 }
