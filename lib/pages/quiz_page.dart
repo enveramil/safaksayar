@@ -166,6 +166,28 @@ class _QuizPageState extends State<QuizPage> {
       "options": ["Ayak", "Kol", "Kafa", "Gövde"],
       "answerIndex": 3,
     },
+    {
+      "question":
+          "Bugüne kadar hangi iki futbol takımı arasında 'UEFA Şampiyonlar Ligi' final müsabakası oynanmamıştır?",
+      "options": [
+        "Juventus ve Milan",
+        "Manchester City ve Chelsea",
+        "Real Madrid ve Barcelona",
+        "Bayern Münih ve Borussia Dortmund"
+      ],
+      "answerIndex": 2,
+    },
+    {
+      "question":
+          "Eski milli futbolcu ve teknik direktör Sergen Yalçın'ın tam adı nedir?",
+      "options": [
+        "Metin Ali Sergen",
+        "Ali Rıza Sergen Yalçın",
+        "Rıza Feyyaz Sergen Yalçın",
+        "Muhsin Metin Sergen Yalçın"
+      ],
+      "answerIndex": 1,
+    },
 
     // Buraya 100+ soru ekleyebilirsiniz
   ];
@@ -300,84 +322,87 @@ class _QuizPageState extends State<QuizPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Soru
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              currentQuestion['question'],
-              style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-          ),
-
-          // Şıklar
-          Expanded(
-            child: ListView.builder(
-              itemCount: currentQuestion['options'].length,
-              itemBuilder: (context, index) {
-                bool isSelected = selectedOption == index;
-                bool isCorrectOption =
-                    showAnswer && index == currentQuestion['answerIndex'];
-
-                return GestureDetector(
-                  onTap: showAnswer ? null : () => checkAnswer(index),
-                  child: Card(
-                    color: isSelected
-                        ? (isCorrect ? Colors.green : Colors.red)
-                        : (isCorrectOption ? Colors.green : Colors.white),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        currentQuestion['options'][index],
-                        style: TextStyle(fontSize: 18.0),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // Konfeti Efekti
-          if (showAnswer && isCorrect)
-            Align(
-              alignment: Alignment.center,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirectionality: BlastDirectionality.explosive,
-                shouldLoop: false,
-              ),
-            ),
-
-          // Cevap Geri Bildirimi
-          if (showAnswer)
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            // Soru
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Text(
-                isCorrect
-                    ? "Doğru Cevap!"
-                    : "Yanlış Cevap! Doğru: ${currentQuestion['options'][currentQuestion['answerIndex']]}",
-                style: TextStyle(
-                  fontSize: 18.0,
-                  fontWeight: FontWeight.bold,
-                  color: isCorrect ? Colors.green : Colors.red,
-                ),
+                currentQuestion['question'],
+                style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
             ),
 
-          // Yeni Soru Butonu
-          if (showAnswer)
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: CustomGradientQuestionButton(
-                currentQuestionIndex: currentQuestionIndex,
-                totalQuestions: questions.length,
-                nextQuestion: nextQuestion,
+            // Şıklar
+            Expanded(
+              child: ListView.builder(
+                itemCount: currentQuestion['options'].length,
+                itemBuilder: (context, index) {
+                  bool isSelected = selectedOption == index;
+                  bool isCorrectOption =
+                      showAnswer && index == currentQuestion['answerIndex'];
+
+                  return GestureDetector(
+                    onTap: showAnswer ? null : () => checkAnswer(index),
+                    child: Card(
+                      color: isSelected
+                          ? (isCorrect ? Colors.green : Colors.red)
+                          : (isCorrectOption ? Colors.green : Colors.white),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          currentQuestion['options'][index],
+                          style: TextStyle(fontSize: 18.0),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-        ],
+
+            // Konfeti Efekti
+            if (showAnswer && isCorrect)
+              Align(
+                alignment: Alignment.center,
+                child: ConfettiWidget(
+                  confettiController: _confettiController,
+                  blastDirectionality: BlastDirectionality.explosive,
+                  shouldLoop: false,
+                ),
+              ),
+
+            // Cevap Geri Bildirimi
+            if (showAnswer)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  isCorrect
+                      ? "Doğru Cevap!"
+                      : "Yanlış Cevap! Doğru: ${currentQuestion['options'][currentQuestion['answerIndex']]}",
+                  style: TextStyle(
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.bold,
+                    color: isCorrect ? Colors.green : Colors.red,
+                  ),
+                ),
+              ),
+
+            // Yeni Soru Butonu
+            if (showAnswer)
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: CustomGradientQuestionButton(
+                  currentQuestionIndex: currentQuestionIndex,
+                  totalQuestions: questions.length,
+                  nextQuestion: nextQuestion,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

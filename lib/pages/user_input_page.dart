@@ -229,10 +229,47 @@ class _UserInputPageState extends State<UserInputPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        title: Text('Kullanıcı Veri Girişi'),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(70), // AppBar yüksekliğini ayarlıyoruz
+        child: AppBar(
+          backgroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0, // AppBar altındaki gölgeyi kaldırdık
+          titleSpacing: 0, // Başlık ile kenar arasındaki boşluğu kaldırdık
+          title: Row(
+            mainAxisAlignment:
+                MainAxisAlignment.center, // Başlık ve fotoğrafları ortalıyoruz
+            children: [
+              Container(
+                padding: EdgeInsets.only(left: 16), // Sol fotoğraf ile boşluk
+                child: CircleAvatar(
+                  radius: 26, // Sol avatar boyutu
+                  backgroundImage: AssetImage('assets/images/bayrak.png'),
+                ),
+              ),
+              // Başlık
+              Container(
+                padding: EdgeInsets.symmetric(
+                    horizontal: 24), // Başlık ile fotoğraflar arasında boşluk
+                child: Text(
+                  'Şafak Sayar 2025',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.only(right: 16), // Sağ fotoğraf ile boşluk
+                child: CircleAvatar(
+                  radius: 26, // Sağ avatar boyutu
+                  backgroundImage: AssetImage('assets/images/app_logo.png'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -411,7 +448,7 @@ class _UserInputPageState extends State<UserInputPage> {
           color: Colors.grey[800], // Softer grey for label
           fontWeight: FontWeight.bold,
         ),
-        hintText: 'Enter $label',
+        //hintText: '$label giriniz...',
         hintStyle: TextStyle(color: Colors.grey[500]), // Subtle grey hint color
         prefixIcon:
             Icon(Icons.edit, color: Colors.grey[600]), // Neutral icon color

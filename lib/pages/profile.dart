@@ -5,7 +5,6 @@ import 'package:safaksayar/pages/user_input_page.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -328,18 +327,23 @@ E-posta ile: bayesatechnology@gmail.com
                                   SizedBox(height: 20),
                                   ElevatedButton(
                                     onPressed: () {
-                                      Navigator.pop(context); // Bottom Sheet'i kapatır
+                                      Navigator.pop(
+                                          context); // Bottom Sheet'i kapatır
                                     },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.blueAccent,
-                                      minimumSize: Size(double.infinity, 50), // Butonun genişliği ve yüksekliği
+                                      minimumSize: Size(double.infinity,
+                                          50), // Butonun genişliği ve yüksekliği
                                       shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(20), // Köşe kıvrımları
+                                        borderRadius: BorderRadius.circular(
+                                            20), // Köşe kıvrımları
                                       ),
                                     ),
-                                    child: Text("Kapat", style: TextStyle(color: Colors.white),),
+                                    child: Text(
+                                      "Kapat",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
                                   ),
-
                                 ],
                               ),
                             ),
@@ -410,8 +414,7 @@ Bu Şartlar hakkında herhangi bir sorunuz varsa, lütfen bize bayesatechnology@
 Son güncelleme: 20 Aralık 2025
                             
 Bu Kullanım Şartları, Şafak Sayar 2025 tarafından sağlanmıştır.
-                                          """
-                                          ,
+                                          """,
                                           style: TextStyle(fontSize: 16),
                                         ),
                                       ),
@@ -419,16 +422,22 @@ Bu Kullanım Şartları, Şafak Sayar 2025 tarafından sağlanmıştır.
                                     SizedBox(height: 20),
                                     ElevatedButton(
                                       onPressed: () {
-                                        Navigator.pop(context); // Bottom Sheet'i kapatır
+                                        Navigator.pop(
+                                            context); // Bottom Sheet'i kapatır
                                       },
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.blueAccent,
-                                        minimumSize: Size(double.infinity, 50), // Butonun genişliği ve yüksekliği
+                                        minimumSize: Size(double.infinity,
+                                            50), // Butonun genişliği ve yüksekliği
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(20), // Köşe kıvrımları
+                                          borderRadius: BorderRadius.circular(
+                                              20), // Köşe kıvrımları
                                         ),
                                       ),
-                                      child: Text("Kapat", style: TextStyle(color: Colors.white),),
+                                      child: Text(
+                                        "Kapat",
+                                        style: TextStyle(color: Colors.white),
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -461,7 +470,7 @@ Bu Kullanım Şartları, Şafak Sayar 2025 tarafından sağlanmıştır.
           style: TextStyle(color: _getTextColor(), fontWeight: FontWeight.bold),
         ),
         onTap: onTap,
-        tileColor: Colors.blueAccent.withOpacity(0.1),
+        tileColor: Colors.blueAccent.withOpacity(0.3),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
