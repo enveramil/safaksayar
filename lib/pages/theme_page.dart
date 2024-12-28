@@ -33,6 +33,12 @@ class _ThemePageState extends State<ThemePage> {
     'assets/images/img20.png',
     'assets/images/img21.png',
     'assets/images/img22.png',
+    'assets/images/img23.png',
+    'assets/images/img24.png',
+    'assets/images/img25.png',
+    'assets/images/img26.png',
+    'assets/images/img27.png',
+    'assets/images/img28.png',
   ];
 
   Future<void> _changeTheme(String newImagePath) async {
@@ -64,12 +70,12 @@ class _ThemePageState extends State<ThemePage> {
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => SplashScreen(), // Yönlendirilmek istenen sayfa
+                  builder: (context) =>
+                      SplashScreen(), // Yönlendirilmek istenen sayfa
                 ),
-                    (route) => false, // Geriye tüm rotaları sil
+                (route) => false, // Geriye tüm rotaları sil
               );
             },
-
             child: Card(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
