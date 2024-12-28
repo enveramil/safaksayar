@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
+import 'package:safaksayar/widgets/custom_question_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class QuizPage extends StatefulWidget {
@@ -23,22 +24,12 @@ class _QuizPageState extends State<QuizPage> {
   final List<Map<String, dynamic>> allQuestions = [
     {
       "question": "Hasbihal, ne demektir?",
-      "options": [
-        "Gürültü",
-        "Geçmiş",
-        "Sohbet",
-        "Özlem"
-      ],
+      "options": ["Gürültü", "Geçmiş", "Sohbet", "Özlem"],
       "answerIndex": 2,
     },
     {
       "question": '"Azı dişi" hangisinin eş anlamlısıdır?',
-      "options": [
-        "Sindirici diş",
-        "Öğütücü diş",
-        "Koparıcı diş",
-        "Kesici diş"
-      ],
+      "options": ["Sindirici diş", "Öğütücü diş", "Koparıcı diş", "Kesici diş"],
       "answerIndex": 1,
     },
     {
@@ -52,7 +43,8 @@ class _QuizPageState extends State<QuizPage> {
       "answerIndex": 2,
     },
     {
-      "question": '"Mavi, lacivert, mor ve bu renklerin tonları" hangisinin sözlük tanımıdır?',
+      "question":
+          '"Mavi, lacivert, mor ve bu renklerin tonları" hangisinin sözlük tanımıdır?',
       "options": [
         "Sıcak renkler",
         "Soğuk renkler",
@@ -63,16 +55,12 @@ class _QuizPageState extends State<QuizPage> {
     },
     {
       "question": '"Siklamen" adlı bitkinin diğer adı nedir?',
-      "options": [
-        "Tavşankulağı",
-        "Aslanağzı",
-        "Kasımpatı",
-        "Kaynanadili"
-      ],
+      "options": ["Tavşankulağı", "Aslanağzı", "Kasımpatı", "Kaynanadili"],
       "answerIndex": 0,
     },
     {
-      "question": 'Azerbaycan bayrağının eşit genişlikteki üç yatay parçasının yukarıdan aşağıya, doğru sıralaması nasıldır?',
+      "question":
+          'Azerbaycan bayrağının eşit genişlikteki üç yatay parçasının yukarıdan aşağıya, doğru sıralaması nasıldır?',
       "options": [
         "Kırmızı, mavi, yeşil",
         "Mavi, yeşil, kırmızı",
@@ -82,33 +70,19 @@ class _QuizPageState extends State<QuizPage> {
       "answerIndex": 3,
     },
     {
-      "question": 'Hangisi atletizmde "dekatlon"da yarışan sporcuların mücadele ettikleri dallardan biri değildir?',
-      "options": [
-        "Cirit atma",
-        "Yüzme",
-        "100 metre koşusu",
-        "Sırıkla atlama"
-      ],
+      "question":
+          'Hangisi atletizmde "dekatlon"da yarışan sporcuların mücadele ettikleri dallardan biri değildir?',
+      "options": ["Cirit atma", "Yüzme", "100 metre koşusu", "Sırıkla atlama"],
       "answerIndex": 1,
     },
     {
       "question": "Altay Dağları'na tırmanan bir dağcı hangisinde olabilir?",
-      "options": [
-        "İzmir",
-        "Kahire",
-        "Bombay",
-        "Moğolistan"
-      ],
+      "options": ["İzmir", "Kahire", "Bombay", "Moğolistan"],
       "answerIndex": 3,
     },
     {
       "question": "Kaçkar Dağı, hangi coğrafi bölgenin en yüksek dağıdır?",
-      "options": [
-        "Ege",
-        "Marmara",
-        "Akdeniz",
-        "Karadeniz"
-      ],
+      "options": ["Ege", "Marmara", "Akdeniz", "Karadeniz"],
       "answerIndex": 3,
     },
     {
@@ -122,13 +96,9 @@ class _QuizPageState extends State<QuizPage> {
       "answerIndex": 2,
     },
     {
-      "question": "Türkçeye Fransızcadan geçen 'doktor' kelimesinin kökeninin anlamı nedir?",
-      "options": [
-        "Gözlemlemek",
-        "Araştırmak",
-        "Öğretmek",
-        "Tedavi etmek"
-      ],
+      "question":
+          "Türkçeye Fransızcadan geçen 'doktor' kelimesinin kökeninin anlamı nedir?",
+      "options": ["Gözlemlemek", "Araştırmak", "Öğretmek", "Tedavi etmek"],
       "answerIndex": 2,
     },
     {
@@ -142,7 +112,8 @@ class _QuizPageState extends State<QuizPage> {
       "answerIndex": 0,
     },
     {
-      "question": 'Fen bilimleri derslerinde "camın kırılması, buzun erimesi, kâğıdın yırtılması" hangisine örnek olarak gösterilir?',
+      "question":
+          'Fen bilimleri derslerinde "camın kırılması, buzun erimesi, kâğıdın yırtılması" hangisine örnek olarak gösterilir?',
       "options": [
         "Kimyasal değişim",
         "Fiziksel değişim",
@@ -152,7 +123,8 @@ class _QuizPageState extends State<QuizPage> {
       "answerIndex": 1,
     },
     {
-      "question": 'Futbolda, özellikle anlaşmazlıklara sebep olan pozisyonları engellemeyi hedefleyerek kullanılan sistemin "VAR" şeklinde kısaltmasının açılımı nedir?',
+      "question":
+          'Futbolda, özellikle anlaşmazlıklara sebep olan pozisyonları engellemeyi hedefleyerek kullanılan sistemin "VAR" şeklinde kısaltmasının açılımı nedir?',
       "options": [
         "Video yardımcı hakem",
         "Video araştırma raporlama",
@@ -172,47 +144,28 @@ class _QuizPageState extends State<QuizPage> {
       "answerIndex": 1,
     },
     {
-      "question": '4 yanlışın 1 doğruyu götürdüğü 100 soruluk çoktan seçmeli bir sınavda 9 boşu ve 8 yanlışı olan birinin neti kaçtır?',
-      "options": [
-        "83",
-        "81",
-        "79",
-        "77"
-      ],
+      "question":
+          '4 yanlışın 1 doğruyu götürdüğü 100 soruluk çoktan seçmeli bir sınavda 9 boşu ve 8 yanlışı olan birinin neti kaçtır?',
+      "options": ["83", "81", "79", "77"],
       "answerIndex": 1,
     },
     {
-      "question": "Osmanlı Devleti'nde tahtta en kısa süre kalan padişah kimdir?",
-      "options": [
-        "II. Mustafa",
-        "III. Selim",
-        "IV. Mehmed",
-        "V. Murad"
-      ],
+      "question":
+          "Osmanlı Devleti'nde tahtta en kısa süre kalan padişah kimdir?",
+      "options": ["II. Mustafa", "III. Selim", "IV. Mehmed", "V. Murad"],
       "answerIndex": 3,
     },
     {
       "question": "Türkiye'nin en az ilçesi olan ili hangisidir?",
-      "options": [
-        "Tokat",
-        "Kırıkkale",
-        "Uşak",
-        "Bayburt"
-      ],
+      "options": ["Tokat", "Kırıkkale", "Uşak", "Bayburt"],
       "answerIndex": 3,
     },
     {
-      "question": "100 metre koşusunda koşucuların vücudunun ilk olarak hangi kısmının bitiş çizgisini geçtiği an, yarışı tamamladıkları kabul edilir?",
-      "options": [
-        "Ayak",
-        "Kol",
-        "Kafa",
-        "Gövde"
-      ],
+      "question":
+          "100 metre koşusunda koşucuların vücudunun ilk olarak hangi kısmının bitiş çizgisini geçtiği an, yarışı tamamladıkları kabul edilir?",
+      "options": ["Ayak", "Kol", "Kafa", "Gövde"],
       "answerIndex": 3,
     },
-
-
 
     // Buraya 100+ soru ekleyebilirsiniz
   ];
@@ -222,7 +175,8 @@ class _QuizPageState extends State<QuizPage> {
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 2));
     _loadScore();
     _shuffleQuestions(); // Soruları rastgele sırala
   }
@@ -232,6 +186,7 @@ class _QuizPageState extends State<QuizPage> {
     _confettiController.dispose();
     super.dispose();
   }
+
   // Soruları karıştır
   void _shuffleQuestions() {
     questions = List<Map<String, dynamic>>.from(allQuestions);
@@ -258,7 +213,8 @@ class _QuizPageState extends State<QuizPage> {
       if (currentQuestionIndex < questions.length - 1) {
         currentQuestionIndex++;
       } else {
-        currentQuestionIndex = 0; // İsterseniz sona geldiğinde "Tebrikler" ekranı gösterebilirsiniz
+        currentQuestionIndex =
+            0; // İsterseniz sona geldiğinde "Tebrikler" ekranı gösterebilirsiniz
         _shuffleQuestions();
       }
 
@@ -273,7 +229,8 @@ class _QuizPageState extends State<QuizPage> {
   Future<void> _loadScore() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      score = prefs.getInt('score') ?? 0; // Kaydedilmiş puanı yükle veya sıfırdan başlat
+      score = prefs.getInt('score') ??
+          0; // Kaydedilmiş puanı yükle veya sıfırdan başlat
     });
   }
 
@@ -318,7 +275,6 @@ class _QuizPageState extends State<QuizPage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final currentQuestion = questions[currentQuestionIndex];
@@ -362,7 +318,8 @@ class _QuizPageState extends State<QuizPage> {
               itemCount: currentQuestion['options'].length,
               itemBuilder: (context, index) {
                 bool isSelected = selectedOption == index;
-                bool isCorrectOption = showAnswer && index == currentQuestion['answerIndex'];
+                bool isCorrectOption =
+                    showAnswer && index == currentQuestion['answerIndex'];
 
                 return GestureDetector(
                   onTap: showAnswer ? null : () => checkAnswer(index),
@@ -414,11 +371,10 @@ class _QuizPageState extends State<QuizPage> {
           if (showAnswer)
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton(
-                onPressed: nextQuestion,
-                child: Text(currentQuestionIndex == questions.length - 1
-                    ? "Başa Dön"
-                    : "Sonraki Soru"),
+              child: CustomGradientQuestionButton(
+                currentQuestionIndex: currentQuestionIndex,
+                totalQuestions: questions.length,
+                nextQuestion: nextQuestion,
               ),
             ),
         ],
