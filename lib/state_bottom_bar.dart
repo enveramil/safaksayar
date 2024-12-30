@@ -30,7 +30,8 @@ class _ManagePagesState extends State<ManagePages> {
 
   Future<void> _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
-    final imagePath = prefs.getString('themeImage') ?? 'assets/images/default.png'; // Varsayılan resim
+    final imagePath = prefs.getString('themeImage') ??
+        'assets/images/default.png'; // Varsayılan resim
     setState(() {
       _backgroundImage = imagePath;
     });
@@ -59,12 +60,37 @@ class _ManagePagesState extends State<ManagePages> {
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
-            systemOverlayStyle: _backgroundImage == 'assets/images/default.png' ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
+            systemOverlayStyle: _backgroundImage == 'assets/images/default.png'
+                ? SystemUiOverlayStyle.dark
+                : SystemUiOverlayStyle.light,
             title: _currentIndex == 0
-                ? Text('İZLEME EKRANI' ,style: TextStyle(color: _backgroundImage == 'assets/images/default.png' ? Colors.black : Colors.white, fontWeight: FontWeight.bold),)
+                ? Text(
+                    'İZLEME EKRANI',
+                    style: TextStyle(
+                        color: _backgroundImage == 'assets/images/default.png'
+                            ? Colors.black
+                            : Colors.white,
+                        fontWeight: FontWeight.bold),
+                  )
                 : _currentIndex == 1
-                ? Text('BİLGİLENDİRME EKRANI',style: TextStyle(color: _backgroundImage == 'assets/images/default.png' ? Colors.black : Colors.white, fontWeight: FontWeight.bold),)
-                : Text('YÖNETİM PANELİ', style: TextStyle(color: _backgroundImage == 'assets/images/default.png' ? Colors.black : Colors.white, fontWeight: FontWeight.bold),),
+                    ? Text(
+                        'BİLGİLENDİRME EKRANI',
+                        style: TextStyle(
+                            color:
+                                _backgroundImage == 'assets/images/default.png'
+                                    ? Colors.black
+                                    : Colors.white,
+                            fontWeight: FontWeight.bold),
+                      )
+                    : Text(
+                        'YÖNETİM PANELİ',
+                        style: TextStyle(
+                            color:
+                                _backgroundImage == 'assets/images/default.png'
+                                    ? Colors.black
+                                    : Colors.white,
+                            fontWeight: FontWeight.bold),
+                      ),
           ),
           body: _screens[_currentIndex],
           bottomNavigationBar: BottomAppBar(
@@ -101,17 +127,21 @@ class _ManagePagesState extends State<ManagePages> {
                 ? (_currentIndex == index ? Colors.black : Colors.grey[700])
                 : (_currentIndex == index ? Colors.white : Colors.grey[400]),
           ),
-
           Visibility(
             visible: _currentIndex == index,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              constraints: const BoxConstraints(minWidth: 60), // Minimum genişlik
+              constraints:
+                  const BoxConstraints(minWidth: 60), // Minimum genişlik
               child: Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: Text(
                   label,
-                  style: TextStyle(color: _backgroundImage == 'assets/images/default.png' ?  Colors.black54 : Colors.white),
+                  style: TextStyle(
+                      color: _backgroundImage == 'assets/images/default.png'
+                          ? Colors.black54
+                          : Colors.white,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ),

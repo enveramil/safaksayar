@@ -101,6 +101,9 @@ class _InfoScreenState extends State<InfoScreen> {
                 contentPadding: EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 10), // İçerik için yatay ve dikey padding
+                leading: CircleAvatar(
+                  child: Image.asset('assets/images/question-mark.png'),
+                ),
                 title: Text(
                   'Sıkça Sorulan Sorular',
                   style: TextStyle(
@@ -143,6 +146,9 @@ class _InfoScreenState extends State<InfoScreen> {
                 contentPadding: EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 10), // İçerik için yatay ve dikey padding
+                leading: CircleAvatar(
+                  child: Image.asset('assets/images/military-rank.png'),
+                ),
                 title: Text(
                   'Rütbeler',
                   style: TextStyle(
@@ -181,6 +187,9 @@ class _InfoScreenState extends State<InfoScreen> {
                 contentPadding: EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 10), // İçerik için yatay ve dikey padding
+                leading: CircleAvatar(
+                  child: Image.asset('assets/images/share.png'),
+                ),
                 title: Text(
                   'Uygulamayı Paylaşın',
                   style: TextStyle(
@@ -214,6 +223,9 @@ class _InfoScreenState extends State<InfoScreen> {
               contentPadding: EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 10), // İçerik için yatay ve dikey padding
+              leading: CircleAvatar(
+                child: Image.asset('assets/images/license.png'),
+              ),
               title: Text(
                 'İller ve Plaka Kodları',
                 style: TextStyle(
@@ -252,6 +264,9 @@ class _InfoScreenState extends State<InfoScreen> {
               contentPadding: EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 10), // İçerik için yatay ve dikey padding
+              leading: CircleAvatar(
+                child: Image.asset('assets/images/pen.png'),
+              ),
               title: Text(
                 'Şafak Sözleri',
                 style: TextStyle(
@@ -290,6 +305,9 @@ class _InfoScreenState extends State<InfoScreen> {
               contentPadding: EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 10), // İçerik için yatay ve dikey padding
+              leading: CircleAvatar(
+                child: Image.asset('assets/images/bell.png'),
+              ),
               title: Text(
                 'Bildirim Servisi',
                 style: TextStyle(
@@ -329,6 +347,9 @@ class _InfoScreenState extends State<InfoScreen> {
               contentPadding: EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 10), // İçerik için yatay ve dikey padding
+              leading: CircleAvatar(
+                child: Image.asset('assets/images/KimMilyonerOlmakİster.png'),
+              ),
               title: Text(
                 'Kim Milyoner Olmak İster',
                 style: TextStyle(

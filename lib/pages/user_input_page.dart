@@ -232,44 +232,49 @@ class _UserInputPageState extends State<UserInputPage> {
       appBar: PreferredSize(
         preferredSize: Size.fromHeight(70), // AppBar yüksekliğini ayarlıyoruz
         child: AppBar(
-          backgroundColor: Colors.white,
-          surfaceTintColor: Colors.transparent,
-          elevation: 0, // AppBar altındaki gölgeyi kaldırdık
-          titleSpacing: 0, // Başlık ile kenar arasındaki boşluğu kaldırdık
-          title: Row(
-            mainAxisAlignment:
-                MainAxisAlignment.center, // Başlık ve fotoğrafları ortalıyoruz
-            children: [
-              Container(
-                padding: EdgeInsets.only(left: 16), // Sol fotoğraf ile boşluk
-                child: CircleAvatar(
-                  radius: 26, // Sol avatar boyutu
-                  backgroundImage: AssetImage('assets/images/bayrak.png'),
-                ),
-              ),
-              // Başlık
-              Container(
-                padding: EdgeInsets.symmetric(
-                    horizontal: 24), // Başlık ile fotoğraflar arasında boşluk
-                child: Text(
-                  'Şafak Sayar 2025',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0, // AppBar altındaki gölgeyi kaldırdık
+            titleSpacing: 0, // Başlık ile kenar arasındaki boşluğu kaldırdık
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Flexible(
+                  flex: 1,
+                  child: Container(
+                    padding: EdgeInsets.only(left: 16),
+                    child: CircleAvatar(
+                      radius: 28,
+                      backgroundImage: AssetImage('assets/images/bayrak.png'),
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: EdgeInsets.only(right: 16), // Sağ fotoğraf ile boşluk
-                child: CircleAvatar(
-                  radius: 26, // Sağ avatar boyutu
-                  backgroundImage: AssetImage('assets/images/app_logo.png'),
+                Flexible(
+                  flex: 3,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'Şafak Sayar 2025',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
+                Flexible(
+                  flex: 1,
+                  child: Container(
+                    padding: EdgeInsets.only(right: 16),
+                    child: CircleAvatar(
+                      radius: 28,
+                      backgroundImage: AssetImage('assets/images/app_logo.png'),
+                    ),
+                  ),
+                ),
+              ],
+            )),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
