@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:safaksayar/pages/home.dart';
@@ -22,6 +23,8 @@ class _UserInputPageState extends State<UserInputPage> {
   String? rutbe;
   final _izinController = TextEditingController();
   final _cezaController = TextEditingController();
+  String? yolIzni;
+  int? yolIzniDisplay;
 
   // Türkiye'nin 81 ili
   final List<String> iller = [
@@ -131,6 +134,64 @@ class _UserInputPageState extends State<UserInputPage> {
     }
   }
 
+  Future<void> _showCupertinoDatePicker(BuildContext context) async {
+    DateTime tempSelectedDate = _selectedDate ?? DateTime.now(); // Geçici tarih
+
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext builder) {
+        return Container(
+          height: 300,
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop(); // İptal
+                      },
+                      child: Text(
+                        'İptal',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _selectedDate =
+                              tempSelectedDate; // Seçili olan tarihi ayarla
+                        });
+                        Navigator.of(context).pop(); // Onay
+                      },
+                      child: Text(
+                        'Tamam',
+                        style: TextStyle(color: Colors.blue),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.date,
+                  initialDateTime: tempSelectedDate,
+                  minimumDate: DateTime(2000),
+                  maximumDate: DateTime(2100),
+                  onDateTimeChanged: (DateTime date) {
+                    tempSelectedDate = date; // Geçici tarihi güncelle
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _loadData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -146,6 +207,7 @@ class _UserInputPageState extends State<UserInputPage> {
           prefs.getInt('izin')?.toString() ?? '0'; // Load izin
       _cezaController.text =
           prefs.getInt('ceza')?.toString() ?? '0'; // Load ceza
+      yolIzni = prefs.getString('yolIzni');
       // Ensure this line retrieves the correct key
       selectedDuration = prefs.getInt('duration'); // Correct key name
       if (storedDate != null) {
@@ -160,6 +222,19 @@ class _UserInputPageState extends State<UserInputPage> {
 
     // Calculate the end date by adding the selected duration (in months) to the selected sülüs date
     if (_selectedDate != null && selectedDuration != null) {
+      if (yolIzni == '1 (Terhis)') {
+        yolIzniDisplay = 0;
+      } else if (yolIzni == '1+1 (İzin)') {
+        yolIzniDisplay = 1;
+      } else if (yolIzni == '2 (Terhis)') {
+        yolIzniDisplay = -1;
+      } else if (yolIzni == '2+2 (İzin)') {
+        yolIzniDisplay = 1;
+      } else if (yolIzni == '3 (Terhis)') {
+        yolIzniDisplay = -2;
+      } else if (yolIzni == '3+3 (İzin)') {
+        yolIzniDisplay = 1;
+      }
       // Toplam süreyi hesapla (izin ve ceza günleri eklenmiş)
       int izinGunu = int.tryParse(_izinController.text ?? '0') ??
           0; // Kullanılan izin günleri
@@ -172,7 +247,8 @@ class _UserInputPageState extends State<UserInputPage> {
         _selectedDate!.month + selectedDuration!,
         _selectedDate!.day +
             izinGunu +
-            cezaGunu, // İzin ve ceza günleri eklendi
+            cezaGunu -
+            yolIzniDisplay!, // İzin ve ceza günleri eklendi
       );
 
       // Verileri kaydet
@@ -192,6 +268,7 @@ class _UserInputPageState extends State<UserInputPage> {
       await prefs.setInt(
           'izin', izinGunu ?? 0); // Kullanılan izin günlerini kaydet
       await prefs.setInt('ceza', cezaGunu ?? 0); // Alınan ceza günlerini kaydet
+      await prefs.setString('yolIzni', yolIzni ?? '');
     }
   }
 
@@ -252,13 +329,14 @@ class _UserInputPageState extends State<UserInputPage> {
                 Flexible(
                   flex: 3,
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 24),
+                    padding: EdgeInsets.only(right: 9, left: 6),
                     child: Text(
                       'Şafak Sayar 2025',
                       style: TextStyle(
                         color: Colors.black,
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
+                        overflow: TextOverflow.visible,
                       ),
                     ),
                   ),
@@ -288,7 +366,7 @@ class _UserInputPageState extends State<UserInputPage> {
             SizedBox(height: 12),
             // Tarih seçici
             GestureDetector(
-              onTap: () => _pickDate(context),
+              onTap: () => _showCupertinoDatePicker(context),
               child: Container(
                 padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                 decoration: BoxDecoration(
@@ -326,6 +404,25 @@ class _UserInputPageState extends State<UserInputPage> {
                   ),
                 ),
               ],
+            ),
+            SizedBox(height: 12),
+            buildDropdown(
+              label: 'Yol İzni',
+              value: yolIzni,
+              hint: 'Yol İzninizi Seçiniz',
+              items: [
+                '1 (Terhis)',
+                '1+1 (İzin)',
+                '2 (Terhis)',
+                '2+2 (İzin)',
+                '3 (Terhis)',
+                '3+3 (İzin)',
+              ],
+              onChanged: (value) {
+                setState(() {
+                  yolIzni = value;
+                });
+              },
             ),
             SizedBox(height: 12),
             buildDropdown(

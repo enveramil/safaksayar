@@ -4,7 +4,6 @@ import 'package:safaksayar/pages/user_input_page.dart';
 import 'package:safaksayar/state_bottom_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -15,7 +14,6 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     _checkIfUserDataExists(); // Verileri kontrol et
-
   }
 
   InterstitialAd? _interstitialAd;
@@ -23,7 +21,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _loadInterstitialAd() {
     InterstitialAd.load(
-      adUnitId: 'ca-app-pub-3940256099942544/5135589807', // AdMob'dan aldığınız ID
+      adUnitId:
+          'ca-app-pub-4655119937024112/3888671941', // AdMob'dan aldığınız ID
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
@@ -67,11 +66,9 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       _interstitialAd?.dispose();
       _interstitialAd = null;
-    }
-    catch (ex){}
+    } catch (ex) {}
     super.dispose();
   }
-
 
   // Verilerin SharedPreferences'ta olup olmadığını kontrol et
   Future<void> _checkIfUserDataExists() async {
@@ -81,14 +78,17 @@ class _SplashScreenState extends State<SplashScreen> {
     String? askerlikYeri = prefs.getString('askerlik_yeri');
     String? memleket = prefs.getString('memleket');
 
-    if (name != null && surname != null && askerlikYeri != null && memleket != null) {
+    if (name != null &&
+        surname != null &&
+        askerlikYeri != null &&
+        memleket != null) {
       // Eğer veriler mevcutsa ana sayfaya yönlendir
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => ManagePages()),
       );
       // Reklam göster
-      _loadInterstitialAd(); // Reklamı yükle
+      //_loadInterstitialAd(); // Reklamı yükle
     } else {
       // Eğer veri yoksa kullanıcıyı veri giriş sayfasına yönlendir
       Navigator.pushReplacement(

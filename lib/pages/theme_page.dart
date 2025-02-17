@@ -39,6 +39,7 @@ class _ThemePageState extends State<ThemePage> {
     'assets/images/img26.png',
     'assets/images/img27.png',
     'assets/images/img28.png',
+    'assets/images/img29.png',
   ];
 
   Future<void> _changeTheme(String newImagePath) async {

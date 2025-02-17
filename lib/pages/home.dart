@@ -12,6 +12,7 @@ class HomeScreen extends StatefulWidget {
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
+
 Duration remainingDuration = Duration.zero;
 
 class _HomeScreenState extends State<HomeScreen> {
@@ -20,8 +21,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? countdownTimer;
   Duration elapsedDuration = Duration.zero; // For elapsed time
   int? durationMonths; // Declare durationMonths as a member variable
-  ValueNotifier<bool> isKalanBlurred = ValueNotifier<bool>(false); // Blur state for KALAN SÜRE
-  ValueNotifier<bool> isGecenBlurred = ValueNotifier<bool>(false); // Blur state for GEÇEN SÜRE
+  ValueNotifier<bool> isKalanBlurred =
+      ValueNotifier<bool>(false); // Blur state for KALAN SÜRE
+  ValueNotifier<bool> isGecenBlurred =
+      ValueNotifier<bool>(false); // Blur state for GEÇEN SÜRE
 
   String displayedInfo = '';
   String displayGununSozu = '';
@@ -176,7 +179,6 @@ class _HomeScreenState extends State<HomeScreen> {
     "Kim bükebilir Türk’ün bileğini? Vatan için fedadır tüm varlığımız!"
   ];
 
-
   @override
   void initState() {
     super.initState();
@@ -204,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void gununSozu(){
+  void gununSozu() {
     final random = Random();
 
     // Check if infoList is not empty to prevent null value
@@ -219,59 +221,78 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-int? izin;
+  int? izin;
   int? ceza;
+  String? yolIzni;
+  int? yolIzniDisplay;
   Future<void> loadCountdown() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    // Load blur states from SharedPreferences
     isKalanBlurred.value = prefs.getBool('isKalanBlurred') ?? false;
     isGecenBlurred.value = prefs.getBool('isGecenBlurred') ?? false;
 
     String? dueDateStr = prefs.getString('sulus_tarihi');
-    durationMonths = prefs.getInt('duration'); // Assign it here
+    durationMonths = prefs.getInt('duration') ?? 0;
 
-    // Load izin (leave days) and ceza (penalty days)
-    izin = prefs.getInt('izin') ?? 0;  // Kullanılan izin
-    ceza = prefs.getInt('ceza') ?? 0;  // Alınan ceza
+    izin = prefs.getInt('izin') ?? 0;
+    ceza = prefs.getInt('ceza') ?? 0;
+    yolIzni = prefs.getString('yolIzni');
+    yolIzniDisplay = yolIzni == '1 (Terhis)'
+        ? 0
+        : yolIzni == '1+1 (İzin)'
+            ? 1
+            : yolIzni == '2 (Terhis)'
+                ? -1
+                : yolIzni == '2+2 (İzin)'
+                    ? 1
+                    : yolIzni == '3 (Terhis)'
+                        ? -2
+                        : yolIzni == '3+3 (İzin)'
+                            ? 1
+                            : 0;
 
-    if (dueDateStr != null && durationMonths != null) {
+    if (dueDateStr != null && durationMonths! > 0) {
       DateTime dueDate = DateTime.parse(dueDateStr);
-      // Adjust the end date by adding both izin (leave days) and ceza (penalty days)
       DateTime endDate = dueDate
-          .add(Duration(days: durationMonths! * 30))  // Normal duration
-          .add(Duration(days: (izin! ?? 0) + (ceza! ?? 0)));          // Add both leave and penalty days
+          .add(Duration(days: durationMonths! * 30))
+          .add(Duration(days: izin!))
+          .add(Duration(days: ceza!))
+          .subtract(Duration(days: yolIzniDisplay!));
 
       DateTime now = DateTime.now();
 
-      if (endDate.isAfter(now)) {
-        setState(() {
-          remainingDuration = endDate.difference(now);  // Remaining time
-          elapsedDuration = now.difference(dueDate);    // Elapsed time since dueDate
-        });
-      } else {
-        setState(() {
-          remainingDuration = Duration.zero;            // No remaining time
-          elapsedDuration = now.difference(dueDate);    // Elapsed time since dueDate
-        });
-      }
-      print(remainingDuration.inDays);
+      setState(() {
+        remainingDuration =
+            endDate.isAfter(now) ? endDate.difference(now) : Duration.zero;
+        elapsedDuration =
+            now.isAfter(dueDate) ? now.difference(dueDate) : Duration.zero;
+      });
 
+      prefs.setInt('remainingDays', remainingDuration.inDays);
+      print('Remaining Days: ${remainingDuration.inDays}');
+    } else {
+      print('Error: Missing or invalid dueDateStr or durationMonths');
     }
   }
 
+  void startTimer() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
 
+    if (countdownTimer != null && countdownTimer!.isActive) return;
 
-  void startTimer() {
     countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (remainingDuration.inSeconds > 0) {
         setState(() {
           remainingDuration -= Duration(seconds: 1);
+          int previousRemainingDays = prefs.getInt('remainingDays') ?? 0;
+          if (previousRemainingDays != remainingDuration.inDays) {
+            prefs.setInt('remainingDays', remainingDuration.inDays);
+          }
         });
       } else {
         timer.cancel();
-        // When the countdown ends, calculate elapsed duration
-        elapsedDuration = DateTime.now().difference(DateTime.parse('sulus_tarihi')); // Update elapsedDuration correctly
+        elapsedDuration = DateTime.now()
+            .difference(DateTime.parse(prefs.getString('sulus_tarihi')!));
       }
     });
   }
@@ -284,21 +305,22 @@ int? izin;
 
   double calculatePercentage() {
     // Total duration in seconds, adjusted for izin and ceza
-    final totalDurationInSeconds = (durationMonths! * 30 * 24 * 60 * 60)
-        + ((izin! ?? 0) * 24 * 60 * 60)  // Subtract izin days
-        + ((ceza! ?? 0) * 24 * 60 * 60); // Add ceza days
+    final totalDurationInSeconds = (durationMonths! * 30 * 24 * 60 * 60) +
+        ((izin! ?? 0) * 24 * 60 * 60) // Subtract izin days
+        +
+        ((ceza! ?? 0) * 24 * 60 * 60) -
+        ((yolIzniDisplay! ?? 0) * 24 * 60 * 60); // Add ceza days
 
     // Elapsed duration in seconds
     final elapsedDurationInSeconds = elapsedDuration.inSeconds;
 
     // Calculate percentage
     if (totalDurationInSeconds > 0) {
-      return (elapsedDurationInSeconds / totalDurationInSeconds).clamp(0.0, 1.0);
+      return (elapsedDurationInSeconds / totalDurationInSeconds)
+          .clamp(0.0, 1.0);
     }
     return 0.0;
   }
-
-
 
   String formatDuration(Duration duration) {
     String twoDigits(int n) => n.toString().padLeft(2, '0');
@@ -327,11 +349,12 @@ int? izin;
       'memleket': memleket,
       'sulusTarihi': sulusTarihi,
       'terhisTarihi': terhisTarihi,
-      'kuvvetKomutanligi' : kuvvetKomutanligi,
-      'rutbe' : rutbe,
-      'themeColor' : themeColor
+      'kuvvetKomutanligi': kuvvetKomutanligi,
+      'rutbe': rutbe,
+      'themeColor': themeColor
     };
   }
+
   final Map<DateTime, bool> _selectedDays = {}; // Seçilen günler
   @override
   Widget build(BuildContext context) {
@@ -351,7 +374,8 @@ int? izin;
                 child: Column(
                   children: [
                     // Header Section with Avatar and Name
-                    buildHeaderSection(data['name'], data['surname'], data['kuvvetKomutanligi'], data['rutbe']),
+                    buildHeaderSection(data['name'], data['surname'],
+                        data['kuvvetKomutanligi'], data['rutbe']),
 
                     SizedBox(height: 15), // Add some space below the header
 
@@ -362,7 +386,8 @@ int? izin;
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              isKalanBlurred.value = !isKalanBlurred.value; // Toggle blur state
+                              isKalanBlurred.value =
+                                  !isKalanBlurred.value; // Toggle blur state
                               _saveBlurState(); // Save state whenever toggled
                             },
                             child: ValueListenableBuilder<bool>(
@@ -373,8 +398,8 @@ int? izin;
                                   content: isBlurred
                                       ? 'Veriler Gizlendi'
                                       : (remainingDuration.inSeconds > 0
-                                      ? formatDuration(remainingDuration)
-                                      : 'Zaman Doldu'),
+                                          ? formatDuration(remainingDuration)
+                                          : 'Zaman Doldu'),
                                   isBlurred: isBlurred, // Pass blur state
                                 );
                               },
@@ -385,7 +410,8 @@ int? izin;
                         Expanded(
                           child: GestureDetector(
                             onTap: () {
-                              isGecenBlurred.value = !isGecenBlurred.value; // Toggle blur state
+                              isGecenBlurred.value =
+                                  !isGecenBlurred.value; // Toggle blur state
                               _saveBlurState(); // Save state whenever toggled
                             },
                             child: ValueListenableBuilder<bool>(
@@ -405,7 +431,9 @@ int? izin;
                       ],
                     ),
 
-                    SizedBox(height: 8), // Space between time containers and the progress bar
+                    SizedBox(
+                        height:
+                            8), // Space between time containers and the progress bar
                     Stack(
                       alignment: Alignment.center,
                       children: [
@@ -413,31 +441,41 @@ int? izin;
                           width: double.infinity,
                           height: 30.0, // Set the height of the progress bar
                           decoration: BoxDecoration(
-                            color: Colors.grey[300], // Background color for the progress bar
-                            borderRadius: BorderRadius.circular(6), // Rounded corners
+                            color: Colors.grey[
+                                300], // Background color for the progress bar
+                            borderRadius:
+                                BorderRadius.circular(6), // Rounded corners
                           ),
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(6), // Clip the child to have rounded corners
+                            borderRadius: BorderRadius.circular(
+                                6), // Clip the child to have rounded corners
                             child: LinearProgressIndicator(
-                              value: calculatePercentage(), // Use the calculated percentage based on elapsed time
-                              backgroundColor: Colors.transparent, // Set to transparent for rounded effect
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+                              value:
+                                  calculatePercentage(), // Use the calculated percentage based on elapsed time
+                              backgroundColor: Colors
+                                  .transparent, // Set to transparent for rounded effect
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.blueAccent),
                             ),
                           ),
                         ),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.center, // Center the content horizontally
-                          children: [ (calculatePercentage() * 100) < 100 ?
-                            Image.asset(
-                              'assets/images/running_man2.gif', // Path to the GIF
-                              width: 30, // Adjust the size of the GIF as needed
-                              height: 30,
-                            ) : Image.asset(
-                            'assets/images/finish.gif', // Path to the GIF
-                            width: 30, // Adjust the size of the GIF as needed
-                            height: 30,
-                          ),
-
+                          mainAxisAlignment: MainAxisAlignment
+                              .center, // Center the content horizontally
+                          children: [
+                            (calculatePercentage() * 100) < 100
+                                ? Image.asset(
+                                    'assets/images/running_man2.gif', // Path to the GIF
+                                    width:
+                                        30, // Adjust the size of the GIF as needed
+                                    height: 30,
+                                  )
+                                : Image.asset(
+                                    'assets/images/finish.gif', // Path to the GIF
+                                    width:
+                                        30, // Adjust the size of the GIF as needed
+                                    height: 30,
+                                  ),
                             Text(
                               '${(calculatePercentage() * 100).toStringAsFixed(0)}%', // Display the percentage
                               style: TextStyle(
@@ -446,16 +484,14 @@ int? izin;
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-
                           ],
                         ),
                       ],
                     ),
 
-
-                    SizedBox(height: 8), // Space between time containers and the progress bar
-
-
+                    SizedBox(
+                        height:
+                            8), // Space between time containers and the progress bar
 
                     // User Information Containers
                     //buildUserInfoContainer('Ad', data['name'] ?? ''),
@@ -463,18 +499,23 @@ int? izin;
                     buildUserInfoContainer(
                       'Sülüs Tarihi',
                       data['sulusTarihi'] != null
-                          ? DateFormat('dd.MM.yyyy').format(DateTime.parse(data['sulusTarihi']!))
+                          ? DateFormat('dd.MM.yyyy')
+                              .format(DateTime.parse(data['sulusTarihi']!))
                           : '',
                     ),
                     buildUserInfoContainer(
                       'Terhis Tarihi',
                       data['terhisTarihi'] != null
-                          ? DateFormat('dd.MM.yyyy').format(DateTime.parse(data['terhisTarihi']!))
+                          ? DateFormat('dd.MM.yyyy')
+                              .format(DateTime.parse(data['terhisTarihi']!))
                           : '',
                     ),
-                    buildUserInfoContainer('Askerlik Yeri', data['askerlikYeri'] ?? ''),
+                    buildUserInfoContainer(
+                        'Askerlik Yeri', data['askerlikYeri'] ?? ''),
                     buildUserInfoContainer('Memleket', data['memleket'] ?? ''),
-                    SizedBox(height: 10,),
+                    SizedBox(
+                      height: 10,
+                    ),
                     buildShortInfoContainer2(),
                     buildShortInfoContainer(),
 
@@ -498,7 +539,10 @@ int? izin;
     await prefs.setBool('isGecenBlurred', isGecenBlurred.value);
   }
 
-  Widget buildBlurContainer({required String title, required String content, required bool isBlurred}) {
+  Widget buildBlurContainer(
+      {required String title,
+      required String content,
+      required bool isBlurred}) {
     return AnimatedOpacity(
       opacity: isBlurred ? 0.6 : 1.0, // Fully hide the content if blurred
       duration: Duration(milliseconds: 300), // Duration of the animation
@@ -545,7 +589,8 @@ int? izin;
   }
 
   // New Widget for Header Section
-  Widget buildHeaderSection(String? name, String? surname, String? kuvvetKomutanligi, String? rutbe) {
+  Widget buildHeaderSection(
+      String? name, String? surname, String? kuvvetKomutanligi, String? rutbe) {
     return Container(
       padding: EdgeInsets.all(16),
       margin: EdgeInsets.symmetric(vertical: 8),
@@ -568,14 +613,17 @@ int? izin;
             children: [
               CircleAvatar(
                 radius: 30, // Size of the avatar
-                backgroundImage: AssetImage('assets/images/app_logo.png'), // Replace with your image path
+                backgroundImage: AssetImage(
+                    'assets/images/app_logo.png'), // Replace with your image path
               ),
               SizedBox(width: 16), // Space between avatar and text
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    name != null && rutbe != null ? '$name - $rutbe' : 'Şafak Sayar',
+                    name != null && rutbe != null
+                        ? '$name - $rutbe'
+                        : 'Şafak Sayar',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -600,14 +648,15 @@ int? izin;
                   ),
                   Text(
                     remainingDuration.inDays - 1 == 0
-                        ? "Atarsa: Doğan Güneş" : remainingDuration.inDays < 1 ? "Atarsa: Atmıyor :)"
-                        : "Atarsa: ${remainingDuration.inDays - 1}",
+                        ? "Atarsa: Doğan Güneş"
+                        : remainingDuration.inDays < 1
+                            ? "Atarsa: Atmıyor :)"
+                            : "Atarsa: ${remainingDuration.inDays - 1}",
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.white70,
                     ),
                   ),
-
                 ],
               ),
             ],
@@ -634,8 +683,6 @@ int? izin;
     );
   }
 
-
-
   Widget buildShortInfoContainer() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -655,10 +702,17 @@ int? izin;
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text('KISA BİLGİLER', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),),
-          Divider( indent: 10, endIndent: 10,),
-
-          SizedBox(height: 10,),
+          Text(
+            'KISA BİLGİLER',
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          ),
+          Divider(
+            indent: 10,
+            endIndent: 10,
+          ),
+          SizedBox(
+            height: 10,
+          ),
           Text(
             displayedInfo, // Display the info here
             style: TextStyle(
@@ -691,10 +745,17 @@ int? izin;
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text('GÜNÜN SÖZÜ', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),),
-          Divider( indent: 10, endIndent: 10,),
-
-          SizedBox(height: 10,),
+          Text(
+            'GÜNÜN SÖZÜ',
+            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+          ),
+          Divider(
+            indent: 10,
+            endIndent: 10,
+          ),
+          SizedBox(
+            height: 10,
+          ),
           Text(
             displayGununSozu, // Display the info here
             style: TextStyle(
@@ -712,7 +773,8 @@ int? izin;
   Future<void> saveSelectedDays(Map<DateTime, bool> selectedDays) async {
     final prefs = await SharedPreferences.getInstance();
     // DateTime'ı String'e dönüştürerek kaydediyoruz
-    final serializedDays = selectedDays.map((key, value) => MapEntry(key.toIso8601String(), value));
+    final serializedDays = selectedDays
+        .map((key, value) => MapEntry(key.toIso8601String(), value));
     prefs.setString('selectedDays', jsonEncode(serializedDays));
   }
 
@@ -722,10 +784,11 @@ int? izin;
     if (savedDays == null) {
       return {};
     }
-    final Map<String, bool> serializedDays = Map<String, bool>.from(jsonDecode(savedDays));
-    return serializedDays.map((key, value) => MapEntry(DateTime.parse(key), value));
+    final Map<String, bool> serializedDays =
+        Map<String, bool>.from(jsonDecode(savedDays));
+    return serializedDays
+        .map((key, value) => MapEntry(DateTime.parse(key), value));
   }
-
 
   Widget buildShortInfoContainer2() {
     return Container(
@@ -754,16 +817,16 @@ int? izin;
                 children: [
                   TableCalendar(
                     locale: 'tr_TR',
-              availableCalendarFormats: const {
-              CalendarFormat.month : 'Month'
-              },
+                    availableCalendarFormats: const {
+                      CalendarFormat.month: 'Month'
+                    },
                     daysOfWeekStyle: DaysOfWeekStyle(
-                      weekendStyle: TextStyle(fontSize: 10), // Hafta sonu günleri için
-                      weekdayStyle: TextStyle(fontSize: 10), // Hafta içi günleri için
+                      weekendStyle:
+                          TextStyle(fontSize: 10), // Hafta sonu günleri için
+                      weekdayStyle:
+                          TextStyle(fontSize: 10), // Hafta içi günleri için
                     ),
-                  headerStyle: HeaderStyle(
-                      titleCentered: true
-                  ),
+                    headerStyle: HeaderStyle(titleCentered: true),
                     selectedDayPredicate: (day) => selectedDays[day] ?? false,
                     onDaySelected: (selectedDay, _) {
                       _selectedDaysNotifier.value = {
@@ -775,9 +838,11 @@ int? izin;
                       // Seçilen günleri kaydet
                       saveSelectedDays(_selectedDaysNotifier.value);
                     },
-
-                    focusedDay: _focusedDay, // focusedDay'ı güncelle
                     firstDay: DateTime.parse(sulusTarihi!),
+                    focusedDay: _focusedDay != null &&
+                            _focusedDay!.isAfter(DateTime.parse(sulusTarihi!))
+                        ? _focusedDay
+                        : DateTime.parse(sulusTarihi!),
                     lastDay: DateTime.parse(terhisTarihi!),
                     calendarStyle: CalendarStyle(
                       selectedDecoration: BoxDecoration(
@@ -786,7 +851,6 @@ int? izin;
                       ),
                     ),
                     calendarBuilders: CalendarBuilders(
-                      // Seçilen günün üzerine ikon eklemek için
                       selectedBuilder: (context, date, focusedDay) {
                         return Padding(
                           padding: const EdgeInsets.all(4.0),
@@ -805,7 +869,6 @@ int? izin;
                                   '${date.day}',
                                   style: TextStyle(color: Colors.white),
                                 ),
-                                // Tik işaretini beyaz container içinde sağ üst köşeye yerleştiriyoruz
                                 Align(
                                   alignment: Alignment.center,
                                   child: Padding(
@@ -815,8 +878,10 @@ int? izin;
                                       height: 60,
                                       padding: EdgeInsets.all(4),
                                       decoration: BoxDecoration(
-                                        color: Colors.white, // Tik ikonu için beyaz arka plan
-                                        shape: BoxShape.circle, // Yuvarlak köşeler
+                                        color: Colors
+                                            .white, // Tik ikonu için beyaz arka plan
+                                        shape:
+                                            BoxShape.circle, // Yuvarlak köşeler
                                       ),
                                       child: Icon(
                                         Icons.check,
@@ -855,146 +920,165 @@ int? izin;
     );
   }
 
-
 // Seçilen günlerin formatlanmış metnini döndüren yardımcı fonksiyon
   String _getSelectedDaysText(Map<DateTime, bool> selectedDays) {
-    final selectedDates = selectedDays.keys.where((date) => selectedDays[date] == true).toList();
+    final selectedDates =
+        selectedDays.keys.where((date) => selectedDays[date] == true).toList();
     if (selectedDates.isEmpty) {
       return 'Hiçbir gün seçilmedi';
     }
-    return selectedDates.map((date) => '${date.day}/${date.month}/${date.year}').join(', ');
+    return selectedDates
+        .map((date) => '${date.day}/${date.month}/${date.year}')
+        .join(', ');
   }
-
 
   Widget buildInfoContainer() {
     return Container(
-      padding: EdgeInsets.all(16),
-      margin: EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
-            spreadRadius: 4,
-            blurRadius: 7,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-
-            children: [
-              Text("ASKERİ RÜTBELER", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),),
-              Divider( indent: 10, endIndent: 10,),
-            ],
-          ),
-
-          Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center, // Ortalamak için
-                crossAxisAlignment: CrossAxisAlignment.center, // Ortalamak için
-                children: [
-                  Image.asset(
-                    'assets/images/Deniz.png',
-                    width: 30,
-                    height: 30,
-                  ),
-                  Expanded(  // Text öğesinin genişlemesini engelleyen bir alan sağlar
-                    child: Text(
-                      "TSK DENİZ KUVVETLERİ RÜTBE SIRALAMASI - YÜKSEKTEN DÜŞÜĞE DOĞRU",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      textAlign: TextAlign.center, // Metni ortalar
+        padding: EdgeInsets.all(16),
+        margin: EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.3),
+              spreadRadius: 4,
+              blurRadius: 7,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  "ASKERİ RÜTBELER",
+                  style:
+                      TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                ),
+                Divider(
+                  indent: 10,
+                  endIndent: 10,
+                ),
+              ],
+            ),
+            Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center, // Ortalamak için
+                  crossAxisAlignment:
+                      CrossAxisAlignment.center, // Ortalamak için
+                  children: [
+                    Image.asset(
+                      'assets/images/Deniz.png',
+                      width: 30,
+                      height: 30,
                     ),
-                  ),
-                  Image.asset(
-                    'assets/images/Deniz.png',
-                    width: 30,
-                    height: 30,
-                  ),
-                ],
-              ),
-            ],
-          ),
-
-          SizedBox(height: 10,),
-          Text("BÜYÜKAMİRAL\nORAMİRAL\nKORAMİRAL\nTÜMAMİRAL\nTUĞAMİRAL\nALBAY\nYARBAY\nBİNBAŞI\nYÜZBAŞI\nÜSTEĞMEN\nTEĞMEN\nASTEĞMEN"),
-          SizedBox(height: 10,),
-
-          Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center, // Ortalamak için
-                crossAxisAlignment: CrossAxisAlignment.center, // Ortalamak için
-                children: [
-                  Image.asset(
-                    'assets/images/Hava.png',
-                    width: 30,
-                    height: 30,
-                  ),
-                  Expanded(  // Text öğesinin genişlemesini engelleyen bir alan sağlar
-                    child: Text(
-                      "TSK HAVA KUVVETLERİ RÜTBE SIRALAMASI - YÜKSEKTEN DÜŞÜĞE DOĞRU",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      textAlign: TextAlign.center, // Metni ortalar
+                    Expanded(
+                      // Text öğesinin genişlemesini engelleyen bir alan sağlar
+                      child: Text(
+                        "TSK DENİZ KUVVETLERİ RÜTBE SIRALAMASI - YÜKSEKTEN DÜŞÜĞE DOĞRU",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                        textAlign: TextAlign.center, // Metni ortalar
+                      ),
                     ),
-                  ),
-                  Image.asset(
-                    'assets/images/Hava.png',
-                    width: 30,
-                    height: 30,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: 10,),
-
-          Text("ORGENERAL\nKORGENERAL\nTÜMGENERAL\nTUĞGENERAL\nALBAY\nYARBAY\nBİNBAŞI\nYÜZBAŞI\nÜSTEĞMEN\nTEĞMEN\nASTEĞMEN"),
-          SizedBox(height: 10,),
-
-          Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center, // Ortalamak için
-                crossAxisAlignment: CrossAxisAlignment.center, // Ortalamak için
-                children: [
-                  Image.asset(
-                    'assets/images/Kara.png',
-                    width: 30,
-                    height: 30,
-                  ),
-                  Expanded(  // Text öğesinin genişlemesini engelleyen bir alan sağlar
-                    child: Text(
-                      "TSK KARA KUVVETLERİ RÜTBE SIRALAMASI - YÜKSEKTEN DÜŞÜĞE DOĞRU",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      textAlign: TextAlign.center, // Metni ortalar
+                    Image.asset(
+                      'assets/images/Deniz.png',
+                      width: 30,
+                      height: 30,
                     ),
-                  ),
-                  Image.asset(
-                    'assets/images/Kara.png',
-                    width: 30,
-                    height: 30,
-                  ),
-                ],
-              ),
-            ],
-          ),
-          SizedBox(height: 10,),
-
-          Text("MAREŞAL\nGENEL KURMAY BAŞKANI\nORGENERAL\nKORGENERAL\nTÜMGENERAL\nTUĞGENERAL\nALBAY\nYARBAY\nBİNBAŞI\nYÜZBAŞI\nÜSTEĞMEN\nTEĞMEN\nASTEĞMEN\nASTSUBAY KIDEMLİ BAŞÇAVUŞ\nASTSUBAY BAŞÇAVUŞ\nASTSUBAY KIDEMLİ ÜSTÇAVUŞ\nASTSUBAY ÜSTÇAVUŞ\nASTSUBAY KIDEMLİ ÇAVUŞ\nASTSUBAY ÇAVUŞ\nUZMAN ÇAVUŞ\nUZMAN ONBAŞI\nONBAŞI\nER"),
-
-
-        ],
-      )
-    );
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Text(
+                "BÜYÜKAMİRAL\nORAMİRAL\nKORAMİRAL\nTÜMAMİRAL\nTUĞAMİRAL\nALBAY\nYARBAY\nBİNBAŞI\nYÜZBAŞI\nÜSTEĞMEN\nTEĞMEN\nASTEĞMEN"),
+            SizedBox(
+              height: 10,
+            ),
+            Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center, // Ortalamak için
+                  crossAxisAlignment:
+                      CrossAxisAlignment.center, // Ortalamak için
+                  children: [
+                    Image.asset(
+                      'assets/images/Hava.png',
+                      width: 30,
+                      height: 30,
+                    ),
+                    Expanded(
+                      // Text öğesinin genişlemesini engelleyen bir alan sağlar
+                      child: Text(
+                        "TSK HAVA KUVVETLERİ RÜTBE SIRALAMASI - YÜKSEKTEN DÜŞÜĞE DOĞRU",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                        textAlign: TextAlign.center, // Metni ortalar
+                      ),
+                    ),
+                    Image.asset(
+                      'assets/images/Hava.png',
+                      width: 30,
+                      height: 30,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Text(
+                "ORGENERAL\nKORGENERAL\nTÜMGENERAL\nTUĞGENERAL\nALBAY\nYARBAY\nBİNBAŞI\nYÜZBAŞI\nÜSTEĞMEN\nTEĞMEN\nASTEĞMEN"),
+            SizedBox(
+              height: 10,
+            ),
+            Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center, // Ortalamak için
+                  crossAxisAlignment:
+                      CrossAxisAlignment.center, // Ortalamak için
+                  children: [
+                    Image.asset(
+                      'assets/images/Kara.png',
+                      width: 30,
+                      height: 30,
+                    ),
+                    Expanded(
+                      // Text öğesinin genişlemesini engelleyen bir alan sağlar
+                      child: Text(
+                        "TSK KARA KUVVETLERİ RÜTBE SIRALAMASI - YÜKSEKTEN DÜŞÜĞE DOĞRU",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                        textAlign: TextAlign.center, // Metni ortalar
+                      ),
+                    ),
+                    Image.asset(
+                      'assets/images/Kara.png',
+                      width: 30,
+                      height: 30,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Text(
+                "MAREŞAL\nGENEL KURMAY BAŞKANI\nORGENERAL\nKORGENERAL\nTÜMGENERAL\nTUĞGENERAL\nALBAY\nYARBAY\nBİNBAŞI\nYÜZBAŞI\nÜSTEĞMEN\nTEĞMEN\nASTEĞMEN\nASTSUBAY KIDEMLİ BAŞÇAVUŞ\nASTSUBAY BAŞÇAVUŞ\nASTSUBAY KIDEMLİ ÜSTÇAVUŞ\nASTSUBAY ÜSTÇAVUŞ\nASTSUBAY KIDEMLİ ÇAVUŞ\nASTSUBAY ÇAVUŞ\nUZMAN ÇAVUŞ\nUZMAN ONBAŞI\nONBAŞI\nER"),
+          ],
+        ));
   }
-
 
   Widget buildTimeContainer({required String title, required String content}) {
     return Container(
@@ -1068,7 +1152,8 @@ int? izin;
             ),
           ),
         ),
-        SizedBox(width: 16), // Add space between the title and content containers
+        SizedBox(
+            width: 16), // Add space between the title and content containers
         Expanded(
           child: Container(
             padding: EdgeInsets.all(16),
@@ -1096,5 +1181,5 @@ int? izin;
         ),
       ],
     );
-  }}
-
+  }
+}

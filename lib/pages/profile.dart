@@ -143,7 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         builder: (BuildContext context) {
                           return FractionallySizedBox(
                             heightFactor:
-                                0.8, // İstenirse yükseklik oranı ayarlanabilir
+                                0.5, // İstenirse yükseklik oranı ayarlanabilir
                             child: Container(
                               padding: EdgeInsets.all(20),
                               child: Column(

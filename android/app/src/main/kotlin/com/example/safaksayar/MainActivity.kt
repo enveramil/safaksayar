@@ -1,4 +1,4 @@
-package com.example.safaksayar
+package com.bayesa.safaksayar
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -27,7 +27,7 @@ class _InfoScreenState extends State<InfoScreen> {
   void _loadInterstitialAd() {
     InterstitialAd.load(
       adUnitId:
-          'ca-app-pub-3940256099942544/5135589807', // Buraya AdMob'dan aldığınız reklam ID'sini yazın.
+          'ca-app-pub-4655119937024112/3888671941', // Buraya AdMob'dan aldığınız reklam ID'sini yazın.
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
@@ -288,48 +288,49 @@ class _InfoScreenState extends State<InfoScreen> {
               },
             ),
           ),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.blueAccent,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10), // İçerik için yatay ve dikey padding
-              leading: CircleAvatar(
-                child: Image.asset('assets/images/bell.png'),
-              ),
-              title: Text(
-                'Bildirim Servisi',
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                'İstenilen vakitte şafak bildirimi yapılır',
-                style: TextStyle(color: Colors.white70),
-              ),
-              trailing:
-                  Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              onTap: () {
-                _showInterstitialAd();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => NotificationScreen()),
-                );
-              },
-            ),
-          ),
+          //TODO: Sonra bakılacak.
+          // Container(
+          //   margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          //   decoration: BoxDecoration(
+          //     borderRadius: BorderRadius.circular(12),
+          //     color: Colors.blueAccent,
+          //     boxShadow: [
+          //       BoxShadow(
+          //         color: Colors.black26,
+          //         blurRadius: 6,
+          //         offset: Offset(0, 3),
+          //       ),
+          //     ],
+          //   ),
+          //   child: ListTile(
+          //     contentPadding: EdgeInsets.symmetric(
+          //         horizontal: 20,
+          //         vertical: 10), // İçerik için yatay ve dikey padding
+          //     leading: CircleAvatar(
+          //       child: Image.asset('assets/images/bell.png'),
+          //     ),
+          //     title: Text(
+          //       'Bildirim Servisi',
+          //       style: TextStyle(
+          //           fontSize: 20,
+          //           color: Colors.white,
+          //           fontWeight: FontWeight.bold),
+          //     ),
+          //     subtitle: Text(
+          //       'İstenilen vakitte şafak bildirimi yapılır',
+          //       style: TextStyle(color: Colors.white70),
+          //     ),
+          //     trailing:
+          //         Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
+          //     onTap: () {
+          //       //_showInterstitialAd();
+          //       Navigator.push(
+          //         context,
+          //         MaterialPageRoute(builder: (context) => NotificationScreen()),
+          //       );
+          //     },
+          //   ),
+          // ),
           Container(
             margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
             decoration: BoxDecoration(
@@ -381,8 +382,11 @@ class IllerPlakaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text('İller ve Plaka Kodları'),
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.white,
       ),
       body: ListView.builder(
         itemCount: illerVePlakalar.length,
