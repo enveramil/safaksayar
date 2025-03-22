@@ -1,27 +1,23 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import 'package:intl/intl.dart';
 
 class NotificationService {
   final FlutterLocalNotificationsPlugin notificationsPlugin =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
 
   Future<void> initNotification() async {
     AndroidInitializationSettings initializationSettingsAndroid =
-    const AndroidInitializationSettings('flutter_logo');
+        const AndroidInitializationSettings('flutter_logo');
 
     var initializationSettingsIOS = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
         requestSoundPermission: true,
-        onDidReceiveLocalNotification: (int id, String? title, String? body,
-            String? payload) async {});
+        onDidReceiveLocalNotification:
+            (int id, String? title, String? body, String? payload) async {});
 
     var initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid,
-        iOS: initializationSettingsIOS);
+        android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
 
     await notificationsPlugin.initialize(initializationSettings,
         onDidReceiveNotificationResponse:
@@ -43,12 +39,13 @@ class NotificationService {
 
   Future scheduleNotification(
       {required int id,
-        String? title,
-        String? body,
-        required DateTime scheduledNotificationDateTime}) async {
+      String? title,
+      String? body,
+      required DateTime scheduledNotificationDateTime}) async {
     // DateTime -> TZDateTime'e çevir
     final tz.TZDateTime tzDateTime = tz.TZDateTime.from(
-        scheduledNotificationDateTime, tz.local); // Bulunduğunuz saat dilimini kullanıyoruz
+        scheduledNotificationDateTime,
+        tz.local); // Bulunduğunuz saat dilimini kullanıyoruz
 
     notificationsPlugin.zonedSchedule(
       id,
@@ -58,9 +55,8 @@ class NotificationService {
       await notificationDetails(),
       androidAllowWhileIdle: true,
       uiLocalNotificationDateInterpretation:
-      UILocalNotificationDateInterpretation.wallClockTime,
+          UILocalNotificationDateInterpretation.wallClockTime,
       matchDateTimeComponents: DateTimeComponents.time, // Saat bazlı tetikleme
     );
-
   }
 }

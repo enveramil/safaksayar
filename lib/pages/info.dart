@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:safaksayar/pages/faq_page.dart';
-import 'package:safaksayar/pages/notification_screen.dart';
+import 'package:safaksayar/pages/notes_page.dart';
 import 'package:safaksayar/pages/quiz_page.dart';
 import 'package:safaksayar/pages/rank_page.dart';
 import 'package:safaksayar/pages/safak_sozleri.dart';
+import 'package:safaksayar/widgets/custom_info_dialog.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class InfoScreen extends StatefulWidget {
   const InfoScreen({super.key});
@@ -22,12 +24,50 @@ class _InfoScreenState extends State<InfoScreen> {
   void initState() {
     super.initState();
     _loadInterstitialAd();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndShowDialog();
+    });
+  }
+
+  Future<void> _checkAndShowDialog() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    bool isDialogShown = prefs.getBool('isDialogShown') ?? false;
+
+    if (!isDialogShown) {
+      showInfoDialog();
+      await prefs.setBool(
+          'isDialogShown', true); // Bir daha göstermemek için işaretle
+    }
+  }
+
+  void showInfoDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Hoş Geldiniz!'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset('assets/images/milyoner.png'),
+            SizedBox(height: 10),
+            Text('Asker de can sıkıntısına birebir bir özellik sunuyoruz. '
+                'Kim Milyoner Olmak İster de çıkmış soruları çözebilirsin. Hadi başlayalım...'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Tamam'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _loadInterstitialAd() {
     InterstitialAd.load(
       adUnitId:
-          'ca-app-pub-4655119937024112/3888671941', // Buraya AdMob'dan aldığınız reklam ID'sini yazın.
+          'ca-app-pub-4655119937024112/1860231792', // Buraya AdMob'dan aldığınız reklam ID'sini yazın.
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
@@ -166,9 +206,99 @@ class _InfoScreenState extends State<InfoScreen> {
             ),
           ),
 
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.blueAccent,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ListTile(
+              contentPadding: EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10), // İçerik için yatay ve dikey padding
+              leading: CircleAvatar(
+                child: Image.asset('assets/images/milyoner.png'),
+              ),
+              title: Text(
+                'Kim Milyoner Olmak İster',
+                style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                'Canın sıkıldıkça soru çöz',
+                style: TextStyle(color: Colors.white70),
+              ),
+              trailing:
+                  Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => QuizPage()),
+                );
+              },
+            ),
+          ),
+
+          // not tutma
+
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.blueAccent,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ListTile(
+              contentPadding: EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10), // İçerik için yatay ve dikey padding
+              leading: CircleAvatar(
+                child: Image.asset('assets/images/notes.png'),
+              ),
+              title: Text(
+                'Not Tut',
+                style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                'Askerlik anılarını kayıt altına al',
+                style: TextStyle(color: Colors.white70),
+              ),
+              trailing:
+                  Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => NotesScreen(
+                            context: context,
+                          )),
+                );
+              },
+            ),
+          ),
+
           GestureDetector(
             onTap: () {
-              Share.share('Bu harika uygulamayı dene: https://safaksayar.com');
+              Share.share(
+                  'https://play.google.com/store/apps/details?id=com.bayesa.safaksayar');
             },
             child: Container(
               margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
@@ -331,47 +461,6 @@ class _InfoScreenState extends State<InfoScreen> {
           //     },
           //   ),
           // ),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.blueAccent,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10), // İçerik için yatay ve dikey padding
-              leading: CircleAvatar(
-                child: Image.asset('assets/images/KimMilyonerOlmakİster.png'),
-              ),
-              title: Text(
-                'Kim Milyoner Olmak İster',
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                'Canın sıkıldıkça soru çöz',
-                style: TextStyle(color: Colors.white70),
-              ),
-              trailing:
-                  Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => QuizPage()),
-                );
-              },
-            ),
-          ),
         ],
       ),
     ));

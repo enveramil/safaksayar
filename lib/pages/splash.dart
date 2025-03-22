@@ -22,7 +22,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void _loadInterstitialAd() {
     InterstitialAd.load(
       adUnitId:
-          'ca-app-pub-4655119937024112/3888671941', // AdMob'dan aldığınız ID
+          'ca-app-pub-4655119937024112/1860231792', // AdMob'dan aldığınız ID
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
@@ -31,7 +31,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
           // Bekleme süresi ekleyerek reklamı göster
           Future.delayed(const Duration(seconds: 5), () {
-            _showInterstitialAd(); // 5 saniye bekledikten sonra reklamı göster
+            //_showInterstitialAd(); // 5 saniye bekledikten sonra reklamı göster
           });
         },
         onAdFailedToLoad: (error) {
@@ -88,7 +88,7 @@ class _SplashScreenState extends State<SplashScreen> {
         MaterialPageRoute(builder: (context) => ManagePages()),
       );
       // Reklam göster
-      //_loadInterstitialAd(); // Reklamı yükle
+      _loadInterstitialAd(); // Reklamı yükle
     } else {
       // Eğer veri yoksa kullanıcıyı veri giriş sayfasına yönlendir
       Navigator.pushReplacement(
@@ -102,7 +102,8 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     // Geçici splash ekranı gösterebilirsin
     return Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      backgroundColor: Colors.white,
+      body: Center(child: Container()),
     );
   }
 }

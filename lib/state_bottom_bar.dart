@@ -13,7 +13,7 @@ class ManagePages extends StatefulWidget {
 }
 
 class _ManagePagesState extends State<ManagePages> {
-  String _backgroundImage = 'assets/images/default.png'; // Varsayılan arka plan
+  String _backgroundImage = 'assets/images/img0.png'; // Varsayılan arka plan
   int _currentIndex = 0;
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -31,7 +31,7 @@ class _ManagePagesState extends State<ManagePages> {
   Future<void> _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
     final imagePath = prefs.getString('themeImage') ??
-        'assets/images/default.png'; // Varsayılan resim
+        'assets/images/img0.png'; // Varsayılan resim
     setState(() {
       _backgroundImage = imagePath;
     });
@@ -56,18 +56,19 @@ class _ManagePagesState extends State<ManagePages> {
         child: Scaffold(
           backgroundColor: Colors.transparent, // Arka plan görünür kalsın
           appBar: AppBar(
+            centerTitle: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
-            systemOverlayStyle: _backgroundImage == 'assets/images/default.png'
+            systemOverlayStyle: _backgroundImage == 'assets/images/img0.png'
                 ? SystemUiOverlayStyle.dark
                 : SystemUiOverlayStyle.light,
             title: _currentIndex == 0
                 ? Text(
                     'İZLEME EKRANI',
                     style: TextStyle(
-                        color: _backgroundImage == 'assets/images/default.png'
+                        color: _backgroundImage == 'assets/images/img0.png'
                             ? Colors.black
                             : Colors.white,
                         fontWeight: FontWeight.bold),
@@ -76,39 +77,48 @@ class _ManagePagesState extends State<ManagePages> {
                     ? Text(
                         'BİLGİLENDİRME EKRANI',
                         style: TextStyle(
-                            color:
-                                _backgroundImage == 'assets/images/default.png'
-                                    ? Colors.black
-                                    : Colors.white,
+                            color: _backgroundImage == 'assets/images/img0.png'
+                                ? Colors.black
+                                : Colors.white,
                             fontWeight: FontWeight.bold),
                       )
                     : Text(
                         'YÖNETİM PANELİ',
                         style: TextStyle(
-                            color:
-                                _backgroundImage == 'assets/images/default.png'
-                                    ? Colors.black
-                                    : Colors.white,
+                            color: _backgroundImage == 'assets/images/img0.png'
+                                ? Colors.black
+                                : Colors.white,
                             fontWeight: FontWeight.bold),
                       ),
           ),
           body: _screens[_currentIndex],
-          bottomNavigationBar: BottomAppBar(
-            color: Colors.transparent,
+          bottomNavigationBar: BottomNavigationBar(
+            showSelectedLabels: false,
+            showUnselectedLabels: false,
+            backgroundColor: Colors.transparent,
+            type: BottomNavigationBarType.fixed,
+            currentIndex: _currentIndex,
             elevation: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(Icons.home, 'Ana Sayfa', 0),
-                    _buildNavItem(Icons.info, 'Bilgi', 1),
-                    _buildNavItem(Icons.settings, 'Profil', 2),
-                  ],
-                ),
-              ),
-            ),
+            onTap: (index) {
+              setState(() {
+                _loadTheme(); // Arka plan temasını yükle
+                _currentIndex = index;
+              });
+            },
+            items: [
+              BottomNavigationBarItem(
+                  icon: _buildNavItem(Icons.home, 'Ana Sayfa', 0),
+                  label: '',
+                  backgroundColor: Colors.transparent),
+              BottomNavigationBarItem(
+                  icon: _buildNavItem(Icons.info, 'Bilgi', 1),
+                  label: '',
+                  backgroundColor: Colors.transparent),
+              BottomNavigationBarItem(
+                  icon: _buildNavItem(Icons.settings, 'Profil', 2),
+                  label: '',
+                  backgroundColor: Colors.transparent),
+            ],
           ),
         ),
       ),
@@ -116,32 +126,37 @@ class _ManagePagesState extends State<ManagePages> {
   }
 
   Widget _buildNavItem(IconData icon, String label, int index) {
-    return GestureDetector(
-      onTap: () => _onItemTapped(index),
+    bool isSelected = _currentIndex == index;
+    return Container(
+      alignment: Alignment.center, // İçeriği ortalamak için
       child: Row(
+        mainAxisSize:
+            MainAxisSize.min, // İçeriğin genişliğini içeriğe göre ayarlar
+        crossAxisAlignment: CrossAxisAlignment.center, // Dikey eksende ortalar
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             icon,
             size: 36,
-            color: _backgroundImage == 'assets/images/default.png'
+            color: _backgroundImage == 'assets/images/img0.png'
                 ? (_currentIndex == index ? Colors.black : Colors.grey[700])
                 : (_currentIndex == index ? Colors.white : Colors.grey[400]),
           ),
           Visibility(
-            visible: _currentIndex == index,
+            visible: isSelected,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              constraints:
-                  const BoxConstraints(minWidth: 60), // Minimum genişlik
+              constraints: const BoxConstraints(minWidth: 60),
               child: Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: Text(
                   label,
                   style: TextStyle(
-                      color: _backgroundImage == 'assets/images/default.png'
-                          ? Colors.black54
-                          : Colors.white,
-                      fontWeight: FontWeight.bold),
+                    color: _backgroundImage == 'assets/images/img0.png'
+                        ? Colors.black54
+                        : Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

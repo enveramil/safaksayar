@@ -252,12 +252,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             : 0;
 
     if (dueDateStr != null && durationMonths! > 0) {
-      DateTime dueDate = DateTime.parse(dueDateStr);
-      DateTime endDate = dueDate
-          .add(Duration(days: durationMonths! * 30))
-          .add(Duration(days: izin!))
-          .add(Duration(days: ceza!))
-          .subtract(Duration(days: yolIzniDisplay!));
+      DateTime dueDate = DateTime.parse(dueDateStr); // Sulus Tarihi
+      DateTime endDate = DateTime(
+        dueDate.year,
+        dueDate.month + durationMonths!,
+        dueDate.day,
+      )
+          .add(Duration(days: izin!)) // 0
+          .add(Duration(days: ceza!)) // 0
+          .subtract(Duration(days: yolIzniDisplay!)); // 0
 
       DateTime now = DateTime.now();
 
@@ -304,6 +307,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   double calculatePercentage() {
+    if (remainingDuration.inDays == 0) {
+      return 0.0;
+    }
     // Total duration in seconds, adjusted for izin and ceza
     final totalDurationInSeconds = (durationMonths! * 30 * 24 * 60 * 60) +
         ((izin! ?? 0) * 24 * 60 * 60) // Subtract izin days
@@ -463,21 +469,28 @@ class _HomeScreenState extends State<HomeScreen> {
                           mainAxisAlignment: MainAxisAlignment
                               .center, // Center the content horizontally
                           children: [
-                            (calculatePercentage() * 100) < 100
+                            calculatePercentage() == 0
                                 ? Image.asset(
-                                    'assets/images/running_man2.gif', // Path to the GIF
-                                    width:
-                                        30, // Adjust the size of the GIF as needed
-                                    height: 30,
-                                  )
-                                : Image.asset(
                                     'assets/images/finish.gif', // Path to the GIF
                                     width:
                                         30, // Adjust the size of the GIF as needed
                                     height: 30,
-                                  ),
+                                  )
+                                : (calculatePercentage() * 100) < 100
+                                    ? Image.asset(
+                                        'assets/images/running_man2.gif', // Path to the GIF
+                                        width:
+                                            30, // Adjust the size of the GIF as needed
+                                        height: 30,
+                                      )
+                                    : Image.asset(
+                                        'assets/images/finish.gif', // Path to the GIF
+                                        width:
+                                            30, // Adjust the size of the GIF as needed
+                                        height: 30,
+                                      ),
                             Text(
-                              '${(calculatePercentage() * 100).toStringAsFixed(0)}%', // Display the percentage
+                              '${calculatePercentage() == 0 ? "100" : (calculatePercentage() * 100).toStringAsFixed(0)}%', // Display the percentage
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.black,
@@ -839,10 +852,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       saveSelectedDays(_selectedDaysNotifier.value);
                     },
                     firstDay: DateTime.parse(sulusTarihi!),
-                    focusedDay: _focusedDay != null &&
-                            _focusedDay!.isAfter(DateTime.parse(sulusTarihi!))
-                        ? _focusedDay
-                        : DateTime.parse(sulusTarihi!),
+                    focusedDay:
+                        _focusedDay.isAfter(DateTime.parse(sulusTarihi!))
+                            ? _focusedDay
+                            : DateTime.parse(sulusTarihi!),
                     lastDay: DateTime.parse(terhisTarihi!),
                     calendarStyle: CalendarStyle(
                       selectedDecoration: BoxDecoration(

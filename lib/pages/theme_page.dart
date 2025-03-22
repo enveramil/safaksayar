@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:safaksayar/pages/splash.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:safaksayar/pages/splash.dart'; // SplashScreen import edildi.
 
 class ThemePage extends StatefulWidget {
   @override
@@ -8,38 +8,9 @@ class ThemePage extends StatefulWidget {
 }
 
 class _ThemePageState extends State<ThemePage> {
-  String _backgroundImage = 'assets/images/default.png';
+  String _backgroundImage = 'assets/images/img0.png';
   final List<String> themes = [
-    'assets/images/default.png',
-    'assets/images/img1.png',
-    'assets/images/img2.png',
-    'assets/images/img3.png',
-    'assets/images/img4.png',
-    'assets/images/img5.png',
-    'assets/images/img6.png',
-    'assets/images/img7.png',
-    'assets/images/img8.png',
-    'assets/images/img9.png',
-    'assets/images/img10.png',
-    'assets/images/img11.png',
-    'assets/images/img12.png',
-    'assets/images/img13.png',
-    'assets/images/img14.png',
-    'assets/images/img15.png',
-    'assets/images/img16.png',
-    'assets/images/img17.png',
-    'assets/images/img18.png',
-    'assets/images/img19.png',
-    'assets/images/img20.png',
-    'assets/images/img21.png',
-    'assets/images/img22.png',
-    'assets/images/img23.png',
-    'assets/images/img24.png',
-    'assets/images/img25.png',
-    'assets/images/img26.png',
-    'assets/images/img27.png',
-    'assets/images/img28.png',
-    'assets/images/img29.png',
+    for (int i = 0; i <= 29; i++) 'assets/images/img$i.png'
   ];
 
   Future<void> _changeTheme(String newImagePath) async {
@@ -48,12 +19,31 @@ class _ThemePageState extends State<ThemePage> {
     setState(() {
       _backgroundImage = newImagePath;
     });
+
+    // SplashScreen'e yönlendir ve önceki sayfaları temizle
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => SplashScreen()),
+      (route) => false, // Tüm rotaları sil
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    imageCache.clear();
+    imageCache.maximumSize = 50;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Temalar")),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Temalar"),
+        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.white,
+      ),
       body: GridView.builder(
         padding: const EdgeInsets.all(16),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -65,18 +55,7 @@ class _ThemePageState extends State<ThemePage> {
         itemBuilder: (context, index) {
           final imagePath = themes[index];
           return GestureDetector(
-            onTap: () {
-              _changeTheme(imagePath);
-
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      SplashScreen(), // Yönlendirilmek istenen sayfa
-                ),
-                (route) => false, // Geriye tüm rotaları sil
-              );
-            },
+            onTap: () => _changeTheme(imagePath),
             child: Card(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -86,6 +65,8 @@ class _ThemePageState extends State<ThemePage> {
                 child: Image.asset(
                   imagePath,
                   fit: BoxFit.cover,
+                  cacheHeight: 200, // Bellek optimizasyonu
+                  cacheWidth: 200,
                 ),
               ),
             ),

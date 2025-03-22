@@ -302,22 +302,29 @@ class _QuizPageState extends State<QuizPage> {
     final currentQuestion = questions[currentQuestionIndex];
 
     return Scaffold(
+      backgroundColor: Colors.grey.shade100,
       appBar: AppBar(
-        title: Text("Soru-Cevap"),
-        backgroundColor: Colors.blueAccent,
+        backgroundColor: Colors.grey.shade100,
+        title: Text("Soru-Cevap", style: TextStyle(color: Colors.black)),
         actions: [
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Center(
               child: Text(
                 "Puan: $score",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black),
               ),
             ),
           ),
           IconButton(
             onPressed: _showResetConfirmationDialog,
-            icon: Icon(Icons.refresh), // Sıfırlama simgesi
+            icon: Icon(
+              Icons.refresh,
+              color: Colors.black,
+            ), // Sıfırlama simgesi
             tooltip: "Puanı Sıfırla",
           ),
         ],
@@ -326,15 +333,32 @@ class _QuizPageState extends State<QuizPage> {
         padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
-            // Soru
-            Padding(
-              padding: const EdgeInsets.all(16.0),
+// Soru Alanı
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.4),
+                    spreadRadius: 3,
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
               child: Text(
                 currentQuestion['question'],
-                style: TextStyle(fontSize: 24.0, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 22.0,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurpleAccent,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
+            SizedBox(height: 20),
 
             // Şıklar
             Expanded(
@@ -347,15 +371,18 @@ class _QuizPageState extends State<QuizPage> {
 
                   return GestureDetector(
                     onTap: showAnswer ? null : () => checkAnswer(index),
-                    child: Card(
-                      color: isSelected
-                          ? (isCorrect ? Colors.green : Colors.red)
-                          : (isCorrectOption ? Colors.green : Colors.white),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          currentQuestion['options'][index],
-                          style: TextStyle(fontSize: 18.0),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Card(
+                        color: isSelected
+                            ? (isCorrect ? Colors.green : Colors.red)
+                            : (isCorrectOption ? Colors.green : Colors.white),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Text(
+                            currentQuestion['options'][index],
+                            style: TextStyle(fontSize: 18.0),
+                          ),
                         ),
                       ),
                     ),

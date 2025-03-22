@@ -138,6 +138,7 @@ class _UserInputPageState extends State<UserInputPage> {
     DateTime tempSelectedDate = _selectedDate ?? DateTime.now(); // Geçici tarih
 
     showModalBottomSheet(
+      backgroundColor: Colors.white,
       context: context,
       builder: (BuildContext builder) {
         return Container(
@@ -155,7 +156,7 @@ class _UserInputPageState extends State<UserInputPage> {
                       },
                       child: Text(
                         'İptal',
-                        style: TextStyle(color: Colors.red),
+                        style: TextStyle(color: Colors.red, fontSize: 18),
                       ),
                     ),
                     TextButton(
@@ -168,7 +169,7 @@ class _UserInputPageState extends State<UserInputPage> {
                       },
                       child: Text(
                         'Tamam',
-                        style: TextStyle(color: Colors.blue),
+                        style: TextStyle(color: Colors.blue, fontSize: 18),
                       ),
                     ),
                   ],
@@ -214,6 +215,24 @@ class _UserInputPageState extends State<UserInputPage> {
         _selectedDate = DateTime.parse(storedDate);
       }
     });
+  }
+
+  /// Özel sayfa geçişi için fonksiyon
+  PageRouteBuilder _customPageRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const begin = Offset(1.0, 0.0); // Sağdan sola başlasın
+        const end = Offset.zero;
+        const curve = Curves.easeInOut;
+
+        var tween =
+            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        var offsetAnimation = animation.drive(tween);
+
+        return SlideTransition(position: offsetAnimation, child: child);
+      },
+    );
   }
 
 // Verileri SharedPreferences'a kaydet
@@ -283,10 +302,9 @@ class _UserInputPageState extends State<UserInputPage> {
         _selectedKuvvetKomutanligi != null &&
         rutbe != null) {
       await _saveData(); // Verileri kaydet
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => ManagePages()),
+      await Navigator.of(context).pushAndRemoveUntil(
+        _customPageRoute(ManagePages()),
+        (Route<dynamic> route) => false,
       );
     } else {
       // Eksik alanlar varsa uyarı gösterebilirsin
@@ -483,9 +501,15 @@ class _UserInputPageState extends State<UserInputPage> {
             SizedBox(height: 12),
             buildDropdown(
               label: 'Askerlik Süresi',
-              value: selectedDuration != null ? '$selectedDuration Ay' : null,
+              value: selectedDuration == 1
+                  ? '$selectedDuration Ay(Bedelli)'
+                  : selectedDuration != null
+                      ? '$selectedDuration Ay'
+                      : null,
               hint: 'Süre Seç',
-              items: [1, 6, 12].map((e) => '$e Ay').toList(),
+              items: [1, 6, 12]
+                  .map((e) => e == 1 ? '$e Ay(Bedelli)' : '$e Ay')
+                  .toList(),
               onChanged: (value) {
                 setState(() {
                   selectedDuration = int.tryParse(value?.split(' ')[0] ?? '');
@@ -497,15 +521,15 @@ class _UserInputPageState extends State<UserInputPage> {
             ElevatedButton(
               onPressed: _submitForm,
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(Colors.blueAccent),
-                foregroundColor: MaterialStateProperty.all(Colors.white),
-                elevation: MaterialStateProperty.all(8),
+                backgroundColor: WidgetStateProperty.all(Colors.blueAccent),
+                foregroundColor: WidgetStateProperty.all(Colors.white),
+                elevation: WidgetStateProperty.all(8),
                 shadowColor:
-                    MaterialStateProperty.all(Colors.black.withOpacity(0.5)),
-                padding: MaterialStateProperty.all(
+                    WidgetStateProperty.all(Colors.black.withOpacity(0.5)),
+                padding: WidgetStateProperty.all(
                     EdgeInsets.symmetric(horizontal: 30, vertical: 10)),
-                minimumSize: MaterialStateProperty.all(Size(150, 50)),
-                shape: MaterialStateProperty.all(
+                minimumSize: WidgetStateProperty.all(Size(150, 50)),
+                shape: WidgetStateProperty.all(
                   RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(color: Colors.white, width: 2),
