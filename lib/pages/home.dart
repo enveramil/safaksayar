@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:intl/intl.dart';
+import 'package:safaksayar/ads/ad_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 
@@ -179,15 +181,36 @@ class _HomeScreenState extends State<HomeScreen> {
     "Kim bükebilir Türk’ün bileğini? Vatan için fedadır tüm varlığımız!"
   ];
 
+  AppOpenAd? openAd;
+
+  Future<void> _loadAppOpenAd() async {
+    await AppOpenAd.load(
+      adUnitId:
+          'ca-app-pub-4655119937024112/3302784322', // AdMob'dan aldığınız ID
+      request: const AdRequest(),
+      adLoadCallback: AppOpenAdLoadCallback(
+        onAdLoaded: (ad) {
+          openAd = ad;
+          openAd!.show();
+        },
+        onAdFailedToLoad: (error) {
+          print('AppOpenAd yüklenemedi: $error');
+        },
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     loadCountdown();
+    _loadAppOpenAd(); // Load the app open ad when the app starts
     pickRandomInfo(); // Pick random info when the app starts
     gununSozu();
     loadSelectedDays().then((loadedDays) {
       _selectedDaysNotifier.value = loadedDays;
     });
+    AdManager().loadAndShowAppOpenAd();
   }
 
   // Function to randomly select an info
@@ -227,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int? yolIzniDisplay;
   Future<void> loadCountdown() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-
+    DateTime endDate = DateTime.now();
     isKalanBlurred.value = prefs.getBool('isKalanBlurred') ?? false;
     isGecenBlurred.value = prefs.getBool('isGecenBlurred') ?? false;
 
@@ -253,14 +276,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (dueDateStr != null && durationMonths! > 0) {
       DateTime dueDate = DateTime.parse(dueDateStr); // Sulus Tarihi
-      DateTime endDate = DateTime(
-        dueDate.year,
-        dueDate.month + durationMonths!,
-        dueDate.day,
-      )
-          .add(Duration(days: izin!)) // 0
-          .add(Duration(days: ceza!)) // 0
-          .subtract(Duration(days: yolIzniDisplay!)); // 0
+      if (durationMonths == 1) {
+        endDate = DateTime(
+          dueDate.year,
+          dueDate.month + durationMonths!,
+          dueDate.day,
+        )
+            .add(Duration(days: izin!)) // 0
+            .add(Duration(days: ceza!)) // 0
+            .subtract(Duration(days: yolIzniDisplay!)); // 0
+      } else if (durationMonths == 6) {
+        endDate = DateTime(
+          dueDate.year,
+          dueDate.month + durationMonths!,
+          dueDate.day,
+        )
+            .add(Duration(days: izin!)) // 0
+            .add(Duration(days: ceza!)) // 0
+            .subtract(Duration(days: yolIzniDisplay!))
+            .subtract(Duration(days: 6)); // 0
+      } else if (durationMonths == 12) {
+        endDate = DateTime(
+          dueDate.year,
+          dueDate.month + durationMonths!,
+          dueDate.day,
+        )
+            .add(Duration(days: izin!)) // 0
+            .add(Duration(days: ceza!)) // 0
+            .subtract(Duration(days: yolIzniDisplay!))
+            .subtract(Duration(days: 12)); // 0
+      }
 
       DateTime now = DateTime.now();
 

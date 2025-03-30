@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:safaksayar/ads/ad_manager.dart';
 import 'package:safaksayar/pages/faq_page.dart';
 import 'package:safaksayar/pages/notes_page.dart';
 import 'package:safaksayar/pages/quiz_page.dart';
@@ -117,49 +118,49 @@ class _InfoScreenState extends State<InfoScreen> {
       child: Column(
         children: [
           SizedBox(height: 15),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.blueAccent,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => FaqPage()),
-                );
-              },
-              child: ListTile(
-                contentPadding: EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10), // İçerik için yatay ve dikey padding
-                leading: CircleAvatar(
-                  child: Image.asset('assets/images/question-mark.png'),
-                ),
-                title: Text(
-                  'Sıkça Sorulan Sorular',
-                  style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  'Aklınıza takılan tüm soruları bu kısımdan giderebilirsiniz',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                trailing:
-                    Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              ),
-            ),
-          ),
+          // Container(
+          //   margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          //   decoration: BoxDecoration(
+          //     borderRadius: BorderRadius.circular(12),
+          //     color: Colors.blueAccent,
+          //     boxShadow: [
+          //       BoxShadow(
+          //         color: Colors.black26,
+          //         blurRadius: 6,
+          //         offset: Offset(0, 3),
+          //       ),
+          //     ],
+          //   ),
+          //   child: GestureDetector(
+          //     onTap: () {
+          //       Navigator.push(
+          //         context,
+          //         MaterialPageRoute(builder: (context) => FaqPage()),
+          //       );
+          //     },
+          //     child: ListTile(
+          //       contentPadding: EdgeInsets.symmetric(
+          //           horizontal: 20,
+          //           vertical: 10), // İçerik için yatay ve dikey padding
+          //       leading: CircleAvatar(
+          //         child: Image.asset('assets/images/question-mark.png'),
+          //       ),
+          //       title: Text(
+          //         'Sıkça Sorulan Sorular',
+          //         style: TextStyle(
+          //             fontSize: 20,
+          //             color: Colors.white,
+          //             fontWeight: FontWeight.bold),
+          //       ),
+          //       subtitle: Text(
+          //         'Aklınıza takılan tüm soruları bu kısımdan giderebilirsiniz',
+          //         style: TextStyle(color: Colors.white70),
+          //       ),
+          //       trailing:
+          //           Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
+          //     ),
+          //   ),
+          // ),
 
           // Rütbeler section
           Container(
@@ -244,6 +245,7 @@ class _InfoScreenState extends State<InfoScreen> {
                   context,
                   MaterialPageRoute(builder: (context) => QuizPage()),
                 );
+                AdManager().loadInterstitialAd();
               },
             ),
           ),

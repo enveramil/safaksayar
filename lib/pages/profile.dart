@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:safaksayar/ads/ad_manager.dart';
 import 'package:safaksayar/pages/theme_page.dart';
 import 'package:safaksayar/pages/user_input_page.dart';
 import 'package:share_plus/share_plus.dart';
@@ -116,6 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onTap: () {
                 Navigator.of(context).push(_customPageRoute(ThemePage()));
                 //_navigateToThemePage();
+                AdManager().loadInterstitialAd();
               },
             ),
             _buildListTile(

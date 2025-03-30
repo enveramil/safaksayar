@@ -237,6 +237,7 @@ class _UserInputPageState extends State<UserInputPage> {
 
 // Verileri SharedPreferences'a kaydet
   Future<void> _saveData() async {
+    DateTime endDate = DateTime.now();
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     // Calculate the end date by adding the selected duration (in months) to the selected sülüs date
@@ -260,15 +261,37 @@ class _UserInputPageState extends State<UserInputPage> {
       int cezaGunu =
           int.tryParse(_cezaController.text ?? '0') ?? 0; // Alınan ceza günleri
 
-      // Süreyi, izin ve ceza günlerini hesaba katarak bitiş tarihini hesapla
-      DateTime endDate = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month + selectedDuration!,
-        _selectedDate!.day +
-            izinGunu +
-            cezaGunu -
-            yolIzniDisplay!, // İzin ve ceza günleri eklendi
-      );
+      if (selectedDuration == 1) {
+        // Süreyi, izin ve ceza günlerini hesaba katarak bitiş tarihini hesapla
+        endDate = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month + selectedDuration!,
+          _selectedDate!.day +
+              izinGunu +
+              cezaGunu -
+              yolIzniDisplay!, // İzin ve ceza günleri eklendi
+        );
+      } else if (selectedDuration == 6) {
+        endDate = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month + selectedDuration!,
+          _selectedDate!.day +
+              izinGunu +
+              cezaGunu -
+              yolIzniDisplay! -
+              5, // İzin ve ceza günleri eklendi
+        );
+      } else if (selectedDuration == 12) {
+        endDate = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month + selectedDuration!,
+          _selectedDate!.day +
+              izinGunu +
+              cezaGunu -
+              yolIzniDisplay! -
+              11, // İzin ve ceza günleri eklendi
+        );
+      }
 
       // Verileri kaydet
       await prefs.setString('name', _nameController.text);

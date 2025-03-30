@@ -43,3 +43,44 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# VS Code klasörleri
+.vscode/
+
+# Derleme ve cache dosyaları
+bin/
+obj/
+
+# Geçici dosyalar
+*.log
+*.tmp
+
+# Kullanıcıya özel dosyalar
+*.user
+*.suo
+*.bak
+
+# Node.js projeleri için
+node_modules/
+
+# JSON ve TXT dosyaları
+*.json
+*.txt
+
+# CMake ile ilgili dosyalar
+*.ninja
+*.check_cache
+*.cmake
+*.bin
+
+# Diğer geçici ve derleme dosyaları
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+Testing/
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+
