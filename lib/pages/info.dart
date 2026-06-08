@@ -6,7 +6,6 @@ import 'package:safaksayar/pages/notes_page.dart';
 import 'package:safaksayar/pages/quiz_page.dart';
 import 'package:safaksayar/pages/rank_page.dart';
 import 'package:safaksayar/pages/safak_sozleri.dart';
-import 'package:safaksayar/widgets/custom_info_dialog.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -119,49 +118,47 @@ class _InfoScreenState extends State<InfoScreen> {
       child: Column(
         children: [
           SizedBox(height: 15),
-          // Container(
-          //   margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-          //   decoration: BoxDecoration(
-          //     borderRadius: BorderRadius.circular(12),
-          //     color: Colors.blueAccent,
-          //     boxShadow: [
-          //       BoxShadow(
-          //         color: Colors.black26,
-          //         blurRadius: 6,
-          //         offset: Offset(0, 3),
-          //       ),
-          //     ],
-          //   ),
-          //   child: GestureDetector(
-          //     onTap: () {
-          //       Navigator.push(
-          //         context,
-          //         MaterialPageRoute(builder: (context) => FaqPage()),
-          //       );
-          //     },
-          //     child: ListTile(
-          //       contentPadding: EdgeInsets.symmetric(
-          //           horizontal: 20,
-          //           vertical: 10), // İçerik için yatay ve dikey padding
-          //       leading: CircleAvatar(
-          //         child: Image.asset('assets/images/question-mark.png'),
-          //       ),
-          //       title: Text(
-          //         'Sıkça Sorulan Sorular',
-          //         style: TextStyle(
-          //             fontSize: 20,
-          //             color: Colors.white,
-          //             fontWeight: FontWeight.bold),
-          //       ),
-          //       subtitle: Text(
-          //         'Aklınıza takılan tüm soruları bu kısımdan giderebilirsiniz',
-          //         style: TextStyle(color: Colors.white70),
-          //       ),
-          //       trailing:
-          //           Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-          //     ),
-          //   ),
-          // ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.blueAccent,
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10), // İçerik için yatay ve dikey padding
+              leading: CircleAvatar(
+                child: Image.asset('assets/images/question-mark.png'),
+              ),
+              title: const Text(
+                'Sıkça Sorulan Sorular',
+                style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold),
+              ),
+              subtitle: const Text(
+                'Aklınıza takılan tüm soruları bu kısımdan giderebilirsiniz',
+                style: TextStyle(color: Colors.white70),
+              ),
+              trailing:
+                  const Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => FaqPage()),
+                );
+              },
+            ),
+          ),
 
           // Rütbeler section
           Container(

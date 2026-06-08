@@ -314,8 +314,33 @@ class _UserInputPageState extends State<UserInputPage> {
       await prefs.setInt('ceza', cezaGunu ?? 0); // Alınan ceza günlerini kaydet
       await prefs.setString('yolIzni', yolIzni ?? '');
 
+      // Get or create unique sequential userId
+      String? userId = prefs.getString('userId');
+      if (userId == null || userId.isEmpty) {
+        try {
+          final counterRef = FirebaseFirestore.instance.collection('counters').doc('users');
+          userId = await FirebaseFirestore.instance.runTransaction((transaction) async {
+            final counterDoc = await transaction.get(counterRef);
+            int currentId = 0;
+            if (counterDoc.exists) {
+              currentId = counterDoc.data()?['currentId'] ?? 0;
+            }
+            int nextId = currentId + 1;
+            transaction.set(counterRef, {'currentId': nextId});
+            return nextId.toString();
+          });
+          await prefs.setString('userId', userId!);
+        } catch (e) {
+          print('Error generating user ID transaction: $e');
+          // Fallback to timestamp if transaction fails
+          userId = DateTime.now().millisecondsSinceEpoch.toString();
+          await prefs.setString('userId', userId);
+        }
+      }
+
       try {
-        await FirebaseFirestore.instance.collection('users').doc('1').set({
+        await FirebaseFirestore.instance.collection('users').doc(userId).set({
+          'userId': userId,
           'name': _nameController.text,
           'surname': _surnameController.text,
           'askerlik_yeri': _selectedAskerlikYeri ?? '',
@@ -325,16 +350,65 @@ class _UserInputPageState extends State<UserInputPage> {
           'duration': selectedDuration!,
           'end_date': endDate.toIso8601String(),
           'rutbe': rutbe ?? '',
-          'izin': izinGunu ?? 0,
-          'ceza': cezaGunu ?? 0,
+          'izin': izinGunu,
+          'ceza': cezaGunu,
           'yolIzni': yolIzni ?? '',
           'updated_at': FieldValue.serverTimestamp(),
         });
-        print('User successfully saved to Firestore.');
+        print('User successfully saved to Firestore with ID: $userId');
       } catch (e) {
         print('Error saving user to Firestore: $e');
       }
     }
+  }
+
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return PopScope(
+          canPop: false, // Geri tuşu ile kapatılmasını engelle
+          child: Dialog(
+            backgroundColor: const Color(0xFF1E293B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 28.0, horizontal: 24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+                    strokeWidth: 3.5,
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Şafak Hesaplanıyor',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Verileriniz kaydediliyor ve profiliniz oluşturuluyor, lütfen bekleyin...',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   // Formu göndermek ve başka bir sayfaya yönlendirmek
@@ -347,15 +421,30 @@ class _UserInputPageState extends State<UserInputPage> {
         _selectedMemleket != null &&
         _selectedKuvvetKomutanligi != null &&
         rutbe != null) {
-      await _saveData(); // Verileri kaydet
-      await Navigator.of(context).pushAndRemoveUntil(
-        _customPageRoute(ManagePages()),
-        (Route<dynamic> route) => false,
-      );
+      
+      // Yükleniyor diyaloğunu göster
+      _showLoadingDialog();
+
+      try {
+        await _saveData(); // Verileri kaydet
+      } catch (e) {
+        print('Error saving data: $e');
+      }
+
+      if (mounted) {
+        // Yükleniyor diyaloğunu kapat
+        Navigator.of(context).pop();
+
+        // Ana sayfaya yönlendir
+        await Navigator.of(context).pushAndRemoveUntil(
+          _customPageRoute(ManagePages()),
+          (Route<dynamic> route) => false,
+        );
+      }
     } else {
       // Eksik alanlar varsa uyarı gösterebilirsin
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lütfen tüm alanları doldurunuz')),
+        const SnackBar(content: Text('Lütfen tüm alanları doldurunuz')),
       );
     }
   }

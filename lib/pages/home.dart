@@ -56,7 +56,17 @@ class _HomeScreenState extends State<HomeScreen> {
     "Bilimsel bir araştırmaya göre kadınların uyku kalitesi yalnız uyuduğunda daha yüksektir. Erkeklerin uyku kalitesi ise partneri ile birlikte uyuduğunda fazladır.",
     "Bütün dünyada yaklaşık 9 milyon insan hapishanelerde tutulur. Bu sayının %25’i sadece Amerika Birleşik Devletleri’ndedir.",
     "Penguenlerin 18 farklı türü vardır. Bu türler 30 santimetre ile bir metre arasında boylara sahiptir.",
-    "Dünya’dan Ay’a gönderilen ışığın ulaşma süresi yaklaşık 1,3 saniyedir."
+    "Dünya’dan Ay’a gönderilen ışığın ulaşma süresi yaklaşık 1,3 saniyedir.",
+    "Gökyüzünün mavi görünmesinin nedeni, güneş ışığının atmosferdeki gazlar tarafından saçılmasıdır. Mavi ışık diğer renklere göre daha fazla saçılır.",
+    "Dünyanın en derin noktası olan Mariana Çukuru, yaklaşık 11.000 metre derinliğindedir. Bu derinlik Everest Dağı'nın yüksekliğinden bile fazladır.",
+    "Kutup ayılarının derileri aslında siyahtır ve kürkleri beyaz değil, şeffaftır. Işığı yansıttıkları için beyaz görünürler.",
+    "Gözlerimiz doğumdan itibaren neredeyse hiç büyümezken, kulaklarımız ve burnumuz yaşam boyu büyümeye devam eder.",
+    "Dünyadaki en uzun ağaç, Kaliforniya'da bulunan ve boyu 115,92 metre olan Hyperion adındaki bir sahil sekoyasıdır.",
+    "Bal hiç bozulmayan tek besindir. Arkeologlar, antik Mısır mezarlarında binlerce yıllık bozulmamış yenilebilir bal kavanozları bulmuşlardır.",
+    "Ahtapotların üç kalbi ve mavi kanı vardır. Ayrıca beyinleri kollarının arasına dağılmıştır.",
+    "Kelebekler tat alma duyularını ayaklarında bulunan özel alıcılar sayesinde hissederler.",
+    "Bir salyangoz hiçbir zarar görmeden bir jiletin keskin kenarı üzerinde sürünebilir, çünkü vücudu koruyucu kalın bir mukus üretir.",
+    "Mona Lisa tablosunun kaşları yoktur. O dönemde kadınların kaşlarını tamamen tıraş etmesi modaydı."
   ];
 
   List<String> askeriSozler = [
@@ -179,7 +189,19 @@ class _HomeScreenState extends State<HomeScreen> {
     "Vatan bölünmez, bayrak inmez, ezan dinmez! Türk askerinin olduğu yerde kutsallarımıza kimse dokunamaz!",
     "Türk devleti var olsun, bu can ülkeme feda olsun!",
     "Askerlik, yüce bir görevdir. Bu yüce görevi tam not alarak geçmek gerekir. Atalarımızdan bize yadigâr bu vatanı beklemek namus görevimizdir.",
-    "Kim bükebilir Türk’ün bileğini? Vatan için fedadır tüm varlığımız!"
+    "Kim bükebilir Türk’ün bileğini? Vatan için fedadır tüm varlığımız!",
+    "Her Türk asker doğar, vatanı için yaşar ve vatanı için ölür.",
+    "Şafak ne kadar karanlık olursa olsun, güneşin doğuşu o kadar muhteşem olacaktır.",
+    "Vatan sevgisi maya gibidir, sütü bozuk olanlarda tutmaz.",
+    "Gözlerinizdeki cesaret, düşmanın kalbindeki korkuyu besler.",
+    "Bayrakları bayrak yapan üstündeki kandır; toprak, eğer uğrunda ölen varsa vatandır.",
+    "Şafak kartları bir bir azalırken, vatan sevgisi kalbimizde bir çınar gibi büyür.",
+    "Bir avuç yiğit, koca bir orduya bedeldir; yeter ki yüreklerinde vatan inancı olsun.",
+    "Askerin adımları toprağı titretir, dosta huzur düşmana korku verir.",
+    "Sınırda bekleyen her Mehmetçik, bu milletin bağımsızlık ufkudur.",
+    "Bizim yolumuz vatan yolu, bizim sevdamız bayrak sevdasıdır.",
+    "Zorluklar askerin gücünü sınar, sabır ise şafağı aydınlatır.",
+    "Şafak kaç olursa olsun, vatan görevi bizim için en büyük onurdur."
   ];
 
   AppOpenAd? openAd;

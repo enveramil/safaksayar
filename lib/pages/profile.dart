@@ -24,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _memleket = '';
   String _sulusTarihi = '';
   String _terhisTarihi = '';
+  String _userId = '';
 
   @override
   void initState() {
@@ -43,6 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _memleket = prefs.getString('memleket') ?? '';
       _sulusTarihi = prefs.getString('sulus_tarihi') ?? '';
       _terhisTarihi = prefs.getString('end_date') ?? '';
+      _userId = prefs.getString('userId') ?? '1';
     });
   }
 
@@ -362,10 +364,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             _buildListTile(
               icon: Icons.filter_1_rounded,
-              title: 'Detayları Aç (Kullanıcı ID: 1)',
+              title: 'Detayları Aç (Kullanıcı ID: $_userId)',
               iconColor: Colors.redAccent,
               onTap: () async {
-                await _showFirestoreUserDetails("1");
+                await _showFirestoreUserDetails(_userId);
               },
             ),
 
@@ -840,7 +842,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final ceza = prefs.getInt('ceza') ?? 0;
       final yolIzni = prefs.getString('yolIzni') ?? '';
 
-      await FirebaseFirestore.instance.collection('users').doc('1').set({
+      // Get or create unique sequential userId
+      String? userId = prefs.getString('userId');
+      if (userId == null || userId.isEmpty) {
+        try {
+          final counterRef = FirebaseFirestore.instance.collection('counters').doc('users');
+          userId = await FirebaseFirestore.instance.runTransaction((transaction) async {
+            final counterDoc = await transaction.get(counterRef);
+            int currentId = 0;
+            if (counterDoc.exists) {
+              currentId = counterDoc.data()?['currentId'] ?? 0;
+            }
+            int nextId = currentId + 1;
+            transaction.set(counterRef, {'currentId': nextId});
+            return nextId.toString();
+          });
+          await prefs.setString('userId', userId!);
+          setState(() {
+            _userId = userId!;
+          });
+        } catch (e) {
+          print('Error generating user ID transaction in profile: $e');
+          userId = DateTime.now().millisecondsSinceEpoch.toString();
+          await prefs.setString('userId', userId);
+          setState(() {
+            _userId = userId!;
+          });
+        }
+      }
+
+      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+        'userId': userId,
         'name': name,
         'surname': surname,
         'askerlik_yeri': askerlikYeri,
