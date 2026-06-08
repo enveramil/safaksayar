@@ -93,33 +93,39 @@ class _ManagePagesState extends State<ManagePages> {
                       ),
           ),
           body: _screens[_currentIndex],
-          bottomNavigationBar: BottomNavigationBar(
-            showSelectedLabels: false,
-            showUnselectedLabels: false,
-            backgroundColor: Colors.transparent,
-            type: BottomNavigationBarType.fixed,
-            currentIndex: _currentIndex,
-            elevation: 0,
-            onTap: (index) {
-              setState(() {
-                _loadTheme(); // Arka plan temasını yükle
-                _currentIndex = index;
-              });
-            },
-            items: [
-              BottomNavigationBarItem(
-                  icon: _buildNavItem(Icons.home, 'Ana Sayfa', 0),
-                  label: '',
-                  backgroundColor: Colors.transparent),
-              BottomNavigationBarItem(
-                  icon: _buildNavItem(Icons.info, 'Bilgi', 1),
-                  label: '',
-                  backgroundColor: Colors.transparent),
-              BottomNavigationBarItem(
-                  icon: _buildNavItem(Icons.settings, 'Profil', 2),
-                  label: '',
-                  backgroundColor: Colors.transparent),
-            ],
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                height: 50,
+                color: Colors.transparent,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _onItemTapped(0),
+                        child: _buildNavItem(Icons.home, 'Ana Sayfa', 0),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _onItemTapped(1),
+                        child: _buildNavItem(Icons.info, 'Bilgi', 1),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _onItemTapped(2),
+                        child: _buildNavItem(Icons.settings, 'Profil', 2),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -138,7 +144,7 @@ class _ManagePagesState extends State<ManagePages> {
         children: [
           Icon(
             icon,
-            size: 36,
+            size: 26,
             color: _backgroundImage == 'assets/images/img0.png'
                 ? (_currentIndex == index ? Colors.black : Colors.grey[700])
                 : (_currentIndex == index ? Colors.white : Colors.grey[400]),
@@ -147,7 +153,6 @@ class _ManagePagesState extends State<ManagePages> {
             visible: isSelected,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              constraints: const BoxConstraints(minWidth: 60),
               child: Padding(
                 padding: const EdgeInsets.only(left: 8.0),
                 child: Text(

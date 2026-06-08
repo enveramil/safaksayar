@@ -341,7 +341,7 @@ class _QuizPageState extends State<QuizPage> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.4),
+                    color: Colors.grey.withValues(alpha: 0.4),
                     spreadRadius: 3,
                     blurRadius: 8,
                     offset: Offset(0, 3),

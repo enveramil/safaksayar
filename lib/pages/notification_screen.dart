@@ -136,7 +136,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
             const SizedBox(height: 30),
             Card(
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),

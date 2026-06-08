@@ -6,9 +6,11 @@ import 'package:safaksayar/pages/splash.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'Services/notification_service.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:home_widget/home_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await HomeWidget.setAppGroupId('group.com.bayesa.safaksayar');
   MobileAds.instance.initialize();
   await Firebase.initializeApp();
   NotificationService().initNotification();

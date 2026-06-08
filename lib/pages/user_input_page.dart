@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:safaksayar/pages/home.dart';
 import 'package:safaksayar/state_bottom_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class UserInputPage extends StatefulWidget {
   const UserInputPage({super.key});
@@ -25,6 +26,7 @@ class _UserInputPageState extends State<UserInputPage> {
   final _cezaController = TextEditingController();
   String? yolIzni;
   int? yolIzniDisplay;
+  int _currentStep = 0; // Çok adımlı form için adımlar
 
   // Türkiye'nin 81 ili
   final List<String> iller = [
@@ -311,6 +313,27 @@ class _UserInputPageState extends State<UserInputPage> {
           'izin', izinGunu ?? 0); // Kullanılan izin günlerini kaydet
       await prefs.setInt('ceza', cezaGunu ?? 0); // Alınan ceza günlerini kaydet
       await prefs.setString('yolIzni', yolIzni ?? '');
+
+      try {
+        await FirebaseFirestore.instance.collection('users').doc('1').set({
+          'name': _nameController.text,
+          'surname': _surnameController.text,
+          'askerlik_yeri': _selectedAskerlikYeri ?? '',
+          'memleket': _selectedMemleket ?? '',
+          'kuvvet_komutanligi': _selectedKuvvetKomutanligi ?? '',
+          'sulus_tarihi': _selectedDate?.toIso8601String() ?? '',
+          'duration': selectedDuration!,
+          'end_date': endDate.toIso8601String(),
+          'rutbe': rutbe ?? '',
+          'izin': izinGunu ?? 0,
+          'ceza': cezaGunu ?? 0,
+          'yolIzni': yolIzni ?? '',
+          'updated_at': FieldValue.serverTimestamp(),
+        });
+        print('User successfully saved to Firestore.');
+      } catch (e) {
+        print('Error saving user to Firestore: $e');
+      }
     }
   }
 
@@ -339,244 +362,487 @@ class _UserInputPageState extends State<UserInputPage> {
 
   @override
   void dispose() {
-    // TODO: implement dispose
+    _nameController.dispose();
+    _surnameController.dispose();
+    _izinController.dispose();
+    _cezaController.dispose();
     super.dispose();
+  }
+
+  void _nextStep() {
+    if (_currentStep == 0) {
+      if (_nameController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lütfen adınızı girin.')),
+        );
+        return;
+      }
+      if (_surnameController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lütfen soyadınızı girin.')),
+        );
+        return;
+      }
+      if (_selectedMemleket == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lütfen memleketinizi seçin.')),
+        );
+        return;
+      }
+    } else if (_currentStep == 1) {
+      if (_selectedKuvvetKomutanligi == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lütfen Kuvvet Komutanlığını seçin.')),
+        );
+        return;
+      }
+      if (rutbe == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lütfen rütbenizi seçin.')),
+        );
+        return;
+      }
+      if (_selectedAskerlikYeri == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lütfen görev yerinizi seçin.')),
+        );
+        return;
+      }
+      if (selectedDuration == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Lütfen askerlik sürenizi seçin.')),
+        );
+        return;
+      }
+    }
+    setState(() {
+      _currentStep++;
+    });
+  }
+
+  void _prevStep() {
+    setState(() {
+      _currentStep--;
+    });
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Navigator.canPop(context)
+              ? GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    ),
+                    child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
+                  ),
+                )
+              : const SizedBox(width: 38),
+          const Text(
+            'Kurulum Sihirbazı',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              shape: BoxShape.circle,
+            ),
+            child: CircleAvatar(
+              radius: 14,
+              backgroundImage: AssetImage('assets/images/app_logo.png'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _getStepTitle(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Adım ${_currentStep + 1} / 3',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: List.generate(3, (index) {
+              final bool isActive = index <= _currentStep;
+              return Expanded(
+                child: Container(
+                  height: 4,
+                  margin: EdgeInsets.only(
+                    left: index == 0 ? 0 : 4,
+                    right: index == 2 ? 0 : 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isActive ? Colors.blueAccent : Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getStepTitle() {
+    switch (_currentStep) {
+      case 0:
+        return 'Kişisel Profil';
+      case 1:
+        return 'Askerlik Bilgileri';
+      case 2:
+        return 'Tarih & İzinler';
+      default:
+        return '';
+    }
+  }
+
+  Widget _buildStepContent() {
+    switch (_currentStep) {
+      case 0:
+        return _buildStep0();
+      case 1:
+        return _buildStep1();
+      case 2:
+        return _buildStep2();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildStep0() {
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        buildTextField(
+          controller: _nameController,
+          label: 'Adınız',
+          icon: Icons.person_outline,
+        ),
+        const SizedBox(height: 16),
+        buildTextField(
+          controller: _surnameController,
+          label: 'Soyadınız',
+          icon: Icons.badge_outlined,
+        ),
+        const SizedBox(height: 16),
+        buildDropdown(
+          label: 'Memleket (İl)',
+          value: _selectedMemleket,
+          hint: 'Memleketinizi seçin',
+          icon: Icons.home_outlined,
+          items: iller,
+          onChanged: (value) {
+            setState(() {
+              _selectedMemleket = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStep1() {
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        buildDropdown(
+          label: 'Kuvvet Komutanlığı',
+          value: _selectedKuvvetKomutanligi,
+          hint: 'Kuvvetinizi seçin',
+          icon: Icons.military_tech_outlined,
+          items: ['Hava', 'Deniz', 'Kara', 'Jandarma'],
+          onChanged: (value) {
+            setState(() {
+              _selectedKuvvetKomutanligi = value;
+            });
+          },
+        ),
+        const SizedBox(height: 16),
+        buildDropdown(
+          label: 'Rütbe',
+          value: rutbe,
+          hint: 'Rütbenizi seçin',
+          icon: Icons.shield_outlined,
+          items: [
+            'ER',
+            'ONBAŞI',
+            'ÇAVUŞ',
+            'ASTÇAVUŞ',
+            'ASTSUBAY',
+            'ASTEĞMEN',
+            'TEĞMEN'
+          ],
+          onChanged: (value) {
+            setState(() {
+              rutbe = value;
+            });
+          },
+        ),
+        const SizedBox(height: 16),
+        buildDropdown(
+          label: 'Görev Yeri (İl)',
+          value: _selectedAskerlikYeri,
+          hint: 'Görev yerinizi seçin',
+          icon: Icons.location_on_outlined,
+          items: iller,
+          onChanged: (value) {
+            setState(() {
+              _selectedAskerlikYeri = value;
+            });
+          },
+        ),
+        const SizedBox(height: 16),
+        buildDropdown(
+          label: 'Askerlik Süresi',
+          value: selectedDuration == 1
+              ? '$selectedDuration Ay(Bedelli)'
+              : selectedDuration != null
+                  ? '$selectedDuration Ay'
+                  : null,
+          hint: 'Askerlik sürenizi seçin',
+          icon: Icons.schedule_outlined,
+          items: [1, 6, 12]
+              .map((e) => e == 1 ? '$e Ay(Bedelli)' : '$e Ay')
+              .toList(),
+          onChanged: (value) {
+            setState(() {
+              selectedDuration = int.tryParse(value?.split(' ')[0] ?? '');
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStep2() {
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        _buildDatePicker(context),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: buildTextField(
+                controller: _izinController,
+                label: 'Kullanılan İzin',
+                icon: Icons.flight_takeoff_outlined,
+                inputType: TextInputType.number,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: buildTextField(
+                controller: _cezaController,
+                label: 'Alınan Ceza',
+                icon: Icons.gavel_outlined,
+                inputType: TextInputType.number,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        buildDropdown(
+          label: 'Yol İzni (Gün)',
+          value: yolIzni,
+          hint: 'Yol izninizi seçin',
+          icon: Icons.commute_outlined,
+          items: [
+            '1 (Terhis)',
+            '1+1 (İzin)',
+            '2 (Terhis)',
+            '2+2 (İzin)',
+            '3 (Terhis)',
+            '3+3 (İzin)',
+          ],
+          onChanged: (value) {
+            setState(() {
+              yolIzni = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBottomNavigation() {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Row(
+        children: [
+          if (_currentStep > 0) ...[
+            Expanded(
+              flex: 1,
+              child: OutlinedButton(
+                onPressed: _prevStep,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Geri',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: _currentStep < 2 ? _nextStep : _submitForm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                shadowColor: Colors.blueAccent.withValues(alpha: 0.3),
+                elevation: 4,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _currentStep < 2 ? 'Devam Et' : 'Kaydet ve Başlat',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _currentStep < 2
+                      ? const Icon(Icons.arrow_forward, size: 18)
+                      : Image.asset(
+                          'assets/images/fast-forward.gif',
+                          height: 20,
+                        ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: Size.fromHeight(70), // AppBar yüksekliğini ayarlıyoruz
-        child: AppBar(
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0, // AppBar altındaki gölgeyi kaldırdık
-            titleSpacing: 0, // Başlık ile kenar arasındaki boşluğu kaldırdık
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Flexible(
-                  flex: 1,
-                  child: Container(
-                    padding: EdgeInsets.only(left: 16),
-                    child: CircleAvatar(
-                      radius: 28,
-                      backgroundImage: AssetImage('assets/images/bayrak.png'),
-                    ),
-                  ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              _buildStepIndicator(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  child: _buildStepContent(),
                 ),
-                Flexible(
-                  flex: 3,
-                  child: Container(
-                    padding: EdgeInsets.only(right: 9, left: 6),
-                    child: Text(
-                      'Şafak Sayar 2025',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        overflow: TextOverflow.visible,
-                      ),
-                    ),
-                  ),
-                ),
-                Flexible(
-                  flex: 1,
-                  child: Container(
-                    padding: EdgeInsets.only(right: 16),
-                    child: CircleAvatar(
-                      radius: 28,
-                      backgroundImage: AssetImage('assets/images/app_logo.png'),
-                    ),
-                  ),
-                ),
-              ],
-            )),
+              ),
+              _buildBottomNavigation(),
+            ],
+          ),
+        ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Ad and Soyad
-            buildTextField(controller: _nameController, label: 'Ad'),
-            SizedBox(height: 12),
-            buildTextField(controller: _surnameController, label: 'Soyad'),
-            SizedBox(height: 12),
-            // Tarih seçici
-            GestureDetector(
-              onTap: () => _showCupertinoDatePicker(context),
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey),
-                    color: Colors.blueAccent),
-                child: Text(
-                  _selectedDate == null
-                      ? 'Sülüs Tarihini Seçin'
-                      : 'Seçilen Tarih: ${DateFormat('dd.MM.yyyy').format(_selectedDate!)}',
-                  style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-            SizedBox(height: 12),
-            // Kullanılan İzin ve Alınan Ceza in one row
-            Row(
-              children: [
-                Expanded(
-                  child: buildTextField(
-                    controller: _izinController,
-                    label: 'Kullanılan İzin (gün)',
-                    inputType: TextInputType.number,
-                  ),
-                ),
-                SizedBox(width: 12), // Space between the fields
-                Expanded(
-                  child: buildTextField(
-                    controller: _cezaController,
-                    label: 'Alınan Ceza (gün)',
-                    inputType: TextInputType.number,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            buildDropdown(
-              label: 'Yol İzni',
-              value: yolIzni,
-              hint: 'Yol İzninizi Seçiniz',
-              items: [
-                '1 (Terhis)',
-                '1+1 (İzin)',
-                '2 (Terhis)',
-                '2+2 (İzin)',
-                '3 (Terhis)',
-                '3+3 (İzin)',
-              ],
-              onChanged: (value) {
-                setState(() {
-                  yolIzni = value;
-                });
-              },
-            ),
-            SizedBox(height: 12),
-            buildDropdown(
-              label: 'Askerlik Yeri',
-              value: _selectedAskerlikYeri,
-              hint: 'Askerlik Yeri Seçin',
-              items: iller,
-              onChanged: (value) {
-                setState(() {
-                  _selectedAskerlikYeri = value;
-                });
-              },
-            ),
-            SizedBox(height: 12),
-            buildDropdown(
-              label: 'Memleket',
-              value: _selectedMemleket,
-              hint: 'Memleket Seçin',
-              items: iller,
-              onChanged: (value) {
-                setState(() {
-                  _selectedMemleket = value;
-                });
-              },
-            ),
-            SizedBox(height: 12),
-            buildDropdown(
-              label: 'Kuvvet Komutanlığı',
-              value: _selectedKuvvetKomutanligi,
-              hint: 'Kuvvet Komutanlığı Seçin',
-              items: ['Hava', 'Deniz', 'Kara', 'Jandarma'],
-              onChanged: (value) {
-                setState(() {
-                  _selectedKuvvetKomutanligi = value;
-                });
-              },
-            ),
-            SizedBox(height: 12),
-            buildDropdown(
-              label: 'Rütbe',
-              value: rutbe,
-              hint: 'Rütbe Seçin',
-              items: [
-                'ER',
-                'ONBAŞI',
-                'ÇAVUŞ',
-                'ASTÇAVUŞ',
-                'ASTSUBAY',
-                'ASTEĞMEN',
-                'TEĞMEN'
-              ],
-              onChanged: (value) {
-                setState(() {
-                  rutbe = value;
-                });
-              },
-            ),
-            SizedBox(height: 12),
-            buildDropdown(
-              label: 'Askerlik Süresi',
-              value: selectedDuration == 1
-                  ? '$selectedDuration Ay(Bedelli)'
-                  : selectedDuration != null
-                      ? '$selectedDuration Ay'
-                      : null,
-              hint: 'Süre Seç',
-              items: [1, 6, 12]
-                  .map((e) => e == 1 ? '$e Ay(Bedelli)' : '$e Ay')
-                  .toList(),
-              onChanged: (value) {
-                setState(() {
-                  selectedDuration = int.tryParse(value?.split(' ')[0] ?? '');
-                });
-              },
-            ),
+    );
+  }
 
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _submitForm,
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(Colors.blueAccent),
-                foregroundColor: WidgetStateProperty.all(Colors.white),
-                elevation: WidgetStateProperty.all(8),
-                shadowColor:
-                    WidgetStateProperty.all(Colors.black.withOpacity(0.5)),
-                padding: WidgetStateProperty.all(
-                    EdgeInsets.symmetric(horizontal: 30, vertical: 10)),
-                minimumSize: WidgetStateProperty.all(Size(150, 50)),
-                shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.white, width: 2),
-                  ),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min, // Keeps the button compact
+  Widget _buildDatePicker(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _showCupertinoDatePicker(context),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_month_outlined, color: Colors.blueAccent, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Gönder',
+                    'Sülüs Tarihi',
                     style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  SizedBox(width: 8), // Space between text and GIF
-                  Image.asset(
-                    'assets/images/fast-forward.gif', // Replace with your GIF path
-                    height: 42, // Adjust height to fit button
+                  const SizedBox(height: 2),
+                  Text(
+                    _selectedDate == null
+                        ? 'Sülüs Tarihini Seçin'
+                        : DateFormat('dd.MM.yyyy').format(_selectedDate!),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: _selectedDate == null ? Colors.white.withValues(alpha: 0.3) : Colors.white,
+                      fontWeight: _selectedDate == null ? FontWeight.w500 : FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
             ),
+            Icon(Icons.arrow_drop_down, color: Colors.white.withValues(alpha: 0.6)),
           ],
         ),
       ),
@@ -586,6 +852,7 @@ class _UserInputPageState extends State<UserInputPage> {
   Widget buildTextField({
     required TextEditingController controller,
     required String label,
+    required IconData icon,
     TextInputType inputType = TextInputType.text,
   }) {
     return TextField(
@@ -594,30 +861,27 @@ class _UserInputPageState extends State<UserInputPage> {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(
-          color: Colors.grey[800], // Softer grey for label
-          fontWeight: FontWeight.bold,
+          color: Colors.white.withValues(alpha: 0.6),
+          fontWeight: FontWeight.w600,
         ),
-        //hintText: '$label giriniz...',
-        hintStyle: TextStyle(color: Colors.grey[500]), // Subtle grey hint color
-        prefixIcon:
-            Icon(Icons.edit, color: Colors.grey[600]), // Neutral icon color
+        prefixIcon: Icon(icon, color: Colors.blueAccent, size: 22),
         filled: true,
-        fillColor: Colors.grey[100], // Broken white background
+        fillColor: Colors.white.withValues(alpha: 0.04),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none, // No outline on unfocused
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[300]!, width: 1.5),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey[400]!, width: 2.0),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.blueAccent, width: 2.0),
         ),
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       ),
-      style: TextStyle(fontSize: 16, color: Colors.grey[800]),
+      style: const TextStyle(fontSize: 15, color: Colors.white),
     );
   }
 
@@ -626,89 +890,50 @@ class _UserInputPageState extends State<UserInputPage> {
     required String hint,
     required List<String> items,
     required ValueChanged<String?> onChanged,
-    required String label, // Label parametresi
+    required String label,
+    required IconData icon,
   }) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 1,
-          child: Container(
-            height:
-                56, // İki container'ın yüksekliğini eşitlemek için sabit bir yükseklik
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.grey[100], // Dropdown arka plan rengi
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: Colors.grey[300]!, width: 1.5), // Soft border color
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1), // Light shadow for depth
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Align(
-              // Label'ı sola yaslamak için Align widget'ı
-              alignment: Alignment.centerLeft, // Sola yaslamak için
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: Colors.grey[800], // Label rengi
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
+    return DropdownButtonFormField<String>(
+      value: value,
+      hint: Text(
+        hint,
+        style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontWeight: FontWeight.w500),
+      ),
+      icon: Icon(Icons.arrow_drop_down, color: Colors.white.withValues(alpha: 0.6)),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(
+          color: Colors.white.withValues(alpha: 0.6),
+          fontWeight: FontWeight.w600,
         ),
-        SizedBox(width: 8), // İki container arasında biraz boşluk
-        Expanded(
-          flex: 2,
-          child: Container(
-            height: 56, // Yüksekliği eşitlemek için
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.grey[100], // Dropdown arka plan rengi
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                  color: Colors.grey[300]!, width: 1.5), // Soft border color
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1), // Light shadow for depth
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                isExpanded: true,
-                value: value,
-                hint: Text(
-                  hint,
-                  style: TextStyle(
-                      color: Colors.grey[600], fontWeight: FontWeight.w500),
-                ),
-                icon: Icon(Icons.arrow_drop_down,
-                    color: Colors.grey[600]), // Neutral icon color
-                items: items.map((String item) {
-                  return DropdownMenuItem<String>(
-                    value: item,
-                    child: Text(
-                      item,
-                      style: TextStyle(color: Colors.grey[800]),
-                    ),
-                  );
-                }).toList(),
-                onChanged: onChanged,
-                dropdownColor: Colors.grey[100], // Dropdown arka plan rengi
-                style: TextStyle(fontSize: 16, color: Colors.grey[800]),
-              ),
-            ),
-          ),
+        prefixIcon: Icon(icon, color: Colors.blueAccent, size: 22),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.04),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
         ),
-      ],
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.blueAccent, width: 2.0),
+        ),
+      ),
+      items: items.map((String item) {
+        return DropdownMenuItem<String>(
+          value: item,
+          child: Text(
+            item,
+            style: const TextStyle(color: Colors.black, fontSize: 15),
+          ),
+        );
+      }).toList(),
+      onChanged: onChanged,
+      dropdownColor: Colors.white,
     );
   }
 }

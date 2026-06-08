@@ -3,6 +3,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:safaksayar/pages/user_input_page.dart';
 import 'package:safaksayar/state_bottom_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:safaksayar/ads/ad_manager.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -20,6 +21,7 @@ class _SplashScreenState extends State<SplashScreen> {
   bool _isAdReady = false;
 
   void _loadInterstitialAd() {
+    if (AdManager.isDev) return;
     InterstitialAd.load(
       adUnitId:
           'ca-app-pub-4655119937024112/1860231792', // AdMob'dan aldığınız ID

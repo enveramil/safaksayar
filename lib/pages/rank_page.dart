@@ -49,8 +49,8 @@ class _RankPageState extends State<RankPage> {
                           BackdropFilter(
                             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                             child: Container(
-                              color: Colors.black.withOpacity(
-                                  0.3), // Hafif siyah transparan katman
+                              color: Colors.black.withValues(
+                                  alpha: 0.3), // Hafif siyah transparan katman
                             ),
                           ),
                           // Resim büyütme popup
@@ -80,8 +80,8 @@ class _RankPageState extends State<RankPage> {
                               child: Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Colors.black.withOpacity(
-                                      0.5), // Siyah yarı şeffaf arka plan
+                                  color: Colors.black.withValues(
+                                      alpha: 0.5), // Siyah yarı şeffaf arka plan
                                 ),
                                 padding: EdgeInsets.all(8),
                                 child: Icon(

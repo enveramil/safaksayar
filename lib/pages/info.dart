@@ -66,6 +66,7 @@ class _InfoScreenState extends State<InfoScreen> {
   }
 
   void _loadInterstitialAd() {
+    if (AdManager.isDev) return;
     InterstitialAd.load(
       adUnitId:
           'ca-app-pub-4655119937024112/1860231792', // Buraya AdMob'dan aldığınız reklam ID'sini yazın.
@@ -490,7 +491,7 @@ class IllerPlakaScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.5),
+                  color: Colors.grey.withValues(alpha: 0.5),
                   spreadRadius: 3,
                   blurRadius: 5,
                   offset: Offset(0, 3),

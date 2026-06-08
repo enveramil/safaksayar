@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:safaksayar/ads/ad_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:home_widget/home_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -184,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
   AppOpenAd? openAd;
 
   Future<void> _loadAppOpenAd() async {
+    if (AdManager.isDev) return;
     await AppOpenAd.load(
       adUnitId:
           'ca-app-pub-4655119937024112/3302784322', // AdMob'dan aldığınız ID
@@ -248,6 +250,34 @@ class _HomeScreenState extends State<HomeScreen> {
   int? ceza;
   String? yolIzni;
   int? yolIzniDisplay;
+
+  Future<void> updateHomeWidget() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final name = prefs.getString('name') ?? 'Asker';
+      final endDateStr = prefs.getString('end_date') ?? '';
+      final sulusStr = prefs.getString('sulus_tarihi') ?? '';
+      final remainingDays = remainingDuration.inDays;
+
+      await HomeWidget.setAppGroupId('group.com.bayesa.safaksayar');
+
+      await HomeWidget.saveWidgetData<String>('name', name);
+      await HomeWidget.saveWidgetData<String>('end_date', endDateStr);
+      await HomeWidget.saveWidgetData<String>('sulus_tarihi', sulusStr);
+      await HomeWidget.saveWidgetData<int>('remainingDays', remainingDays);
+
+      await HomeWidget.updateWidget(
+        name: 'SafakWidgetProvider',
+        androidName: 'SafakWidgetProvider',
+        qualifiedAndroidName: 'com.bayesa.safaksayar.SafakWidgetProvider',
+        iOSName: 'SafakWidget',
+      );
+      print('HomeWidget updated successfully.');
+    } catch (e) {
+      print('Failed to update HomeWidget: $e');
+    }
+  }
+
   Future<void> loadCountdown() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     DateTime endDate = DateTime.now();
@@ -317,7 +347,9 @@ class _HomeScreenState extends State<HomeScreen> {
       });
 
       prefs.setInt('remainingDays', remainingDuration.inDays);
+      await prefs.setString('end_date', endDate.toIso8601String());
       print('Remaining Days: ${remainingDuration.inDays}');
+      updateHomeWidget();
     } else {
       print('Error: Missing or invalid dueDateStr or durationMonths');
     }
@@ -335,6 +367,7 @@ class _HomeScreenState extends State<HomeScreen> {
           int previousRemainingDays = prefs.getInt('remainingDays') ?? 0;
           if (previousRemainingDays != remainingDuration.inDays) {
             prefs.setInt('remainingDays', remainingDuration.inDays);
+            updateHomeWidget();
           }
         });
       } else {
@@ -612,7 +645,7 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.6),
+              color: Colors.grey.withValues(alpha: 0.6),
               spreadRadius: 2,
               blurRadius: 5,
               offset: Offset(0, 3),
@@ -657,7 +690,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 2,
             blurRadius: 5,
             offset: Offset(0, 3),
@@ -723,7 +756,7 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.withValues(alpha: 0.3),
                   spreadRadius: 4,
                   blurRadius: 7,
                   offset: Offset(0, 3),
@@ -750,7 +783,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 4,
             blurRadius: 7,
             offset: Offset(0, 3),
@@ -793,7 +826,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 4,
             blurRadius: 7,
             offset: Offset(0, 3),
@@ -848,6 +881,22 @@ class _HomeScreenState extends State<HomeScreen> {
         .map((key, value) => MapEntry(DateTime.parse(key), value));
   }
 
+  bool _isElapsedDay(DateTime day) {
+    if (sulusTarihi == null || sulusTarihi!.isEmpty) return false;
+    try {
+      final start = DateTime.parse(sulusTarihi!);
+      final dayNormalized = DateTime(day.year, day.month, day.day);
+      final startNormalized = DateTime(start.year, start.month, start.day);
+      final now = DateTime.now();
+      final todayNormalized = DateTime(now.year, now.month, now.day);
+
+      return (dayNormalized.isAtSameMomentAs(startNormalized) || dayNormalized.isAfter(startNormalized)) &&
+          dayNormalized.isBefore(todayNormalized);
+    } catch (_) {
+      return false;
+    }
+  }
+
   Widget buildShortInfoContainer2() {
     return Container(
       padding: EdgeInsets.all(16),
@@ -857,7 +906,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 4,
             blurRadius: 7,
             offset: Offset(0, 3),
@@ -885,7 +934,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           TextStyle(fontSize: 10), // Hafta içi günleri için
                     ),
                     headerStyle: HeaderStyle(titleCentered: true),
-                    selectedDayPredicate: (day) => selectedDays[day] ?? false,
+                    selectedDayPredicate: (day) {
+                      final dayNormalized = DateTime(day.year, day.month, day.day);
+                      if (_isElapsedDay(dayNormalized)) {
+                        return true;
+                      }
+                      if (selectedDays[day] == true) return true;
+                      return selectedDays.keys.any((d) =>
+                          d.year == day.year &&
+                          d.month == day.month &&
+                          d.day == day.day &&
+                          selectedDays[d] == true);
+                    },
                     onDaySelected: (selectedDay, _) {
                       _selectedDaysNotifier.value = {
                         ...selectedDays,
@@ -897,10 +957,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       saveSelectedDays(_selectedDaysNotifier.value);
                     },
                     firstDay: DateTime.parse(sulusTarihi!),
-                    focusedDay:
-                        _focusedDay.isAfter(DateTime.parse(sulusTarihi!))
-                            ? _focusedDay
-                            : DateTime.parse(sulusTarihi!),
+                    focusedDay: () {
+                      final first = DateTime.parse(sulusTarihi!);
+                      final last = DateTime.parse(terhisTarihi!);
+                      if (_focusedDay.isBefore(first)) {
+                        return first;
+                      } else if (_focusedDay.isAfter(last)) {
+                        return last;
+                      } else {
+                        return _focusedDay;
+                      }
+                    }(),
                     lastDay: DateTime.parse(terhisTarihi!),
                     calendarStyle: CalendarStyle(
                       selectedDecoration: BoxDecoration(
@@ -958,7 +1025,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         return Container(
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.5),
+                            color: Colors.blue.withValues(alpha: 0.5),
                             shape: BoxShape.circle,
                           ),
                           child: Text(
@@ -999,7 +1066,7 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
               spreadRadius: 4,
               blurRadius: 7,
               offset: Offset(0, 3),
@@ -1147,7 +1214,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 2,
             blurRadius: 5,
             offset: Offset(0, 3),
@@ -1193,7 +1260,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.withValues(alpha: 0.3),
                   spreadRadius: 2,
                   blurRadius: 5,
                   offset: Offset(0, 3),
@@ -1221,7 +1288,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.grey.withOpacity(0.3),
+                  color: Colors.grey.withValues(alpha: 0.3),
                   spreadRadius: 2,
                   blurRadius: 5,
                   offset: Offset(0, 3),

@@ -2,9 +2,12 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:safaksayar/ads/ad_helper.dart';
 
 class AdManager {
+  static const bool isDev = true;
+
   AppOpenAd? _openAd;
 
   Future<void> loadAndShowAppOpenAd() async {
+    if (isDev) return;
     try {
       await AppOpenAd.load(
         adUnitId: AdHelper.openAdUnitId,
@@ -40,6 +43,7 @@ class AdManager {
   bool _isAdReady = false;
 
   Future<void> loadInterstitialAd() async {
+    if (isDev) return;
     await InterstitialAd.load(
       adUnitId:
           'ca-app-pub-4655119937024112/1860231792', // AdMob'dan aldığınız ID
