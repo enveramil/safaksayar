@@ -10,7 +10,7 @@ import 'package:home_widget/home_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await HomeWidget.setAppGroupId('group.com.bayesa.safaksayar');
+  await HomeWidget.setAppGroupId('group.com.bayesa.ios.safaksayar2026');
   MobileAds.instance.initialize();
   await Firebase.initializeApp();
   NotificationService().initNotification();

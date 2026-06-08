@@ -259,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final sulusStr = prefs.getString('sulus_tarihi') ?? '';
       final remainingDays = remainingDuration.inDays;
 
-      await HomeWidget.setAppGroupId('group.com.bayesa.safaksayar');
+      await HomeWidget.setAppGroupId('group.com.bayesa.ios.safaksayar2026');
 
       await HomeWidget.saveWidgetData<String>('name', name);
       await HomeWidget.saveWidgetData<String>('end_date', endDateStr);

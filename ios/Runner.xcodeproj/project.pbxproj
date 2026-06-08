@@ -11,6 +11,7 @@
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3837D1768E7AB2015DE6B924 /* SafakWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 48986070B77AB4337BED14E7 /* SafakWidgetExtension.appex */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		5C21F9B86464A0BAD7C07187 /* SafakWidgetExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889A6D16D40CF32F31CA5EED /* SafakWidgetExtension.swift */; };
 		699E193FC086B0565F22DB54 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 135AF5D7DD28829D2450274F /* Pods_Runner.framework */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		8E5FDD18735DE8234E1F14D4 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 276E5FA551957F92F47BC42B /* Pods_RunnerTests.framework */; };
@@ -19,7 +20,6 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		AAD1EA5F2FD6E130008EF255 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AAD1EA5E2FD6E130008EF255 /* GoogleService-Info.plist */; };
 		ADDE76963A1D39345EF7E26A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 81A3E2BEB95556724F13C0B6 /* Foundation.framework */; };
-		F95B3FC7DFC24EE454E26E9E /* SafakWidgetExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7727F699B31479F255963FDB /* SafakWidgetExtension.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +72,7 @@
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		1E552A86E90134450CAADDE0 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = SafakWidgetExtension/Info.plist; sourceTree = "<group>"; };
 		234971E5495A8B264100588F /* SafakWidgetExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; name = SafakWidgetExtension.entitlements; path = SafakWidgetExtension/SafakWidgetExtension.entitlements; sourceTree = "<group>"; };
+		256DF7DF5AFA81FDAE161A15 /* SafakWidgetExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; name = SafakWidgetExtension.entitlements; path = SafakWidgetExtension/SafakWidgetExtension.entitlements; sourceTree = "<group>"; };
 		276E5FA551957F92F47BC42B /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		29A2CC4BEC5568DFE2D52305 /* SafakWidgetExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; name = SafakWidgetExtension.entitlements; path = SafakWidgetExtension/SafakWidgetExtension.entitlements; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
@@ -86,6 +87,7 @@
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		81A3E2BEB95556724F13C0B6 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		88815EB29FB704F47D004919 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		889A6D16D40CF32F31CA5EED /* SafakWidgetExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SafakWidgetExtension.swift; path = SafakWidgetExtension/SafakWidgetExtension.swift; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -97,6 +99,7 @@
 		AAD1EA5E2FD6E130008EF255 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AAF65E392D2D6B2400C61F83 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		B86585B6C26A46CAC19411BB /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
+		C07849062AB4CEC750F1B906 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = SafakWidgetExtension/Info.plist; sourceTree = "<group>"; };
 		CB2F0A2499B84CC58D393692 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = Info.plist; path = SafakWidgetExtension/Info.plist; sourceTree = "<group>"; };
 		D5093F7F9C6B763ACFDF23CD /* SafakWidgetExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; name = SafakWidgetExtension.entitlements; path = SafakWidgetExtension/SafakWidgetExtension.entitlements; sourceTree = "<group>"; };
 		FC1EB0EB6BDE381BA86C68AF /* SafakWidgetExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SafakWidgetExtension.swift; path = SafakWidgetExtension/SafakWidgetExtension.swift; sourceTree = "<group>"; };
@@ -232,6 +235,9 @@
 				7727F699B31479F255963FDB /* SafakWidgetExtension.swift */,
 				CB2F0A2499B84CC58D393692 /* Info.plist */,
 				234971E5495A8B264100588F /* SafakWidgetExtension.entitlements */,
+				889A6D16D40CF32F31CA5EED /* SafakWidgetExtension.swift */,
+				C07849062AB4CEC750F1B906 /* Info.plist */,
+				256DF7DF5AFA81FDAE161A15 /* SafakWidgetExtension.entitlements */,
 			);
 			name = SafakWidgetExtension;
 			sourceTree = "<group>";
@@ -486,7 +492,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F95B3FC7DFC24EE454E26E9E /* SafakWidgetExtension.swift in Sources */,
+				5C21F9B86464A0BAD7C07187 /* SafakWidgetExtension.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -677,6 +683,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = SafakWidgetExtension/SafakWidgetExtension.entitlements;
+				DEVELOPMENT_TEAM = P7K2A833CM;
 				INFOPLIST_FILE = SafakWidgetExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -699,6 +706,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = SafakWidgetExtension/SafakWidgetExtension.entitlements;
+				DEVELOPMENT_TEAM = P7K2A833CM;
 				INFOPLIST_FILE = SafakWidgetExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -882,6 +890,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = SafakWidgetExtension/SafakWidgetExtension.entitlements;
+				DEVELOPMENT_TEAM = P7K2A833CM;
 				INFOPLIST_FILE = SafakWidgetExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
 				LD_RUNPATH_SEARCH_PATHS = (

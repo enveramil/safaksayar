@@ -19,7 +19,7 @@ struct Provider: TimelineProvider {
     }
     
     private func getEntry() -> SimpleEntry {
-        let userDefaults = UserDefaults(suiteName: "group.com.bayesa.safaksayar")
+        let userDefaults = UserDefaults(suiteName: "group.com.bayesa.ios.safaksayar2026")
         let name = userDefaults?.string(forKey: "name") ?? "Asker"
         let endStr = userDefaults?.string(forKey: "end_date") ?? ""
         let sulusStr = userDefaults?.string(forKey: "sulus_tarihi") ?? ""

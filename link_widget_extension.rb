@@ -23,6 +23,16 @@ else
   puts "Created target '#{target_name}'."
 end
 
+# Find development team from Runner target
+development_team = nil
+runner_target.build_configurations.each do |config|
+  val = config.build_settings['DEVELOPMENT_TEAM']
+  if val && !val.empty?
+    development_team = val
+    break
+  end
+end
+
 # Configure target build settings
 target.build_configurations.each do |config|
   config.build_settings['INFOPLIST_FILE'] = 'SafakWidgetExtension/Info.plist'
@@ -33,6 +43,9 @@ target.build_configurations.each do |config|
   config.build_settings['TARGETED_DEVICE_FAMILY'] = '1,2' # iPhone, iPad
   config.build_settings['PRODUCT_NAME'] = 'SafakWidgetExtension'
   config.build_settings['SKIP_INSTALL'] = 'YES'
+  if development_team
+    config.build_settings['DEVELOPMENT_TEAM'] = development_team
+  end
 end
 
 # Set CODE_SIGN_ENTITLEMENTS on the host Runner target
