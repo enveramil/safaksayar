@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:safaksayar/ads/ad_manager.dart';
@@ -295,47 +296,6 @@ class _InfoScreenState extends State<InfoScreen> {
             ),
           ),
 
-          GestureDetector(
-            onTap: () {
-              Share.share(
-                  'https://play.google.com/store/apps/details?id=com.bayesa.safaksayar');
-            },
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.blueAccent,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 6,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: ListTile(
-                contentPadding: EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10), // İçerik için yatay ve dikey padding
-                leading: CircleAvatar(
-                  child: Image.asset('assets/images/share.png'),
-                ),
-                title: Text(
-                  'Uygulamayı Paylaşın',
-                  style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  'Askerlik görevini yerine getirecek arkadaşlarınızla ve devrelerinizle uygulamayı paylaşmayı unutmayın',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                trailing:
-                    Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              ),
-            ),
-          ),
           Container(
             margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
             decoration: BoxDecoration(
@@ -416,6 +376,53 @@ class _InfoScreenState extends State<InfoScreen> {
                   MaterialPageRoute(builder: (context) => SafakSozleri()),
                 );
               },
+            ),
+          ),
+          GestureDetector(
+            onTap: () {
+              final String shareLink = Platform.isIOS
+                  ? 'https://apps.apple.com/app/id6777999683'
+                  : 'https://play.google.com/store/apps/details?id=com.bayesa.safaksayar';
+              final box = context.findRenderObject() as RenderBox?;
+              final Rect? sharePositionOrigin = box != null
+                  ? box.localToGlobal(Offset.zero) & box.size
+                  : null;
+              Share.share(shareLink, sharePositionOrigin: sharePositionOrigin);
+            },
+            child: Container(
+              margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.blueAccent,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: ListTile(
+                contentPadding: EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10), // İçerik için yatay ve dikey padding
+                leading: CircleAvatar(
+                  child: Image.asset('assets/images/share.png'),
+                ),
+                title: Text(
+                  'Uygulamayı Paylaşın',
+                  style: TextStyle(
+                      fontSize: 20,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  'Askerlik görevini yerine getirecek arkadaşlarınızla ve devrelerinizle uygulamayı paylaşmayı unutmayın',
+                  style: TextStyle(color: Colors.white70),
+                ),
+                trailing:
+                    Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
+              ),
             ),
           ),
           //TODO: Sonra bakılacak.

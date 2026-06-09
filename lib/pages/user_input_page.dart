@@ -5,6 +5,7 @@ import 'package:safaksayar/pages/home.dart';
 import 'package:safaksayar/state_bottom_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/services.dart';
 
 class UserInputPage extends StatefulWidget {
   const UserInputPage({super.key});
@@ -863,28 +864,35 @@ class _UserInputPageState extends State<UserInputPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light, // For Android (white icons)
+        statusBarBrightness: Brightness.dark, // For iOS (white icons)
+      ),
+      child: Scaffold(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildStepIndicator(),
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: _buildStepContent(),
+          child: SafeArea(
+            child: Column(
+              children: [
+                _buildHeader(),
+                _buildStepIndicator(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: _buildStepContent(),
+                  ),
                 ),
-              ),
-              _buildBottomNavigation(),
-            ],
+                _buildBottomNavigation(),
+              ],
+            ),
           ),
         ),
       ),
@@ -984,6 +992,7 @@ class _UserInputPageState extends State<UserInputPage> {
   }) {
     return DropdownButtonFormField<String>(
       value: value,
+      style: const TextStyle(color: Colors.white, fontSize: 15),
       hint: Text(
         hint,
         style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontWeight: FontWeight.w500),
@@ -1021,6 +1030,14 @@ class _UserInputPageState extends State<UserInputPage> {
           ),
         );
       }).toList(),
+      selectedItemBuilder: (BuildContext context) {
+        return items.map<Widget>((String item) {
+          return Text(
+            item,
+            style: const TextStyle(color: Colors.white, fontSize: 15),
+          );
+        }).toList();
+      },
       onChanged: onChanged,
       dropdownColor: Colors.white,
     );
