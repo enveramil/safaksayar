@@ -160,91 +160,97 @@ class _ChatScreenState extends State<ChatScreen> {
             .limit(100)
             .snapshots();
 
-    return Column(
-      children: [
-        // Custom Tab Slider
-        _buildTabSelector(),
-        
-        // Chat room banner
-        _buildRoomBanner(),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        FocusScope.of(context).unfocus();
+      },
+      child: Column(
+        children: [
+          // Custom Tab Slider
+          _buildTabSelector(),
+          
+          // Chat room banner
+          _buildRoomBanner(),
 
-        // Messages List
-        Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: queryStream,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Text(
-                      'Bağlantı hatası oluştu: ${snapshot.error}',
-                      style: TextStyle(color: _getTextColor()),
-                      textAlign: TextAlign.center,
+          // Messages List
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: queryStream,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Text(
+                        'Bağlantı hatası oluştu: ${snapshot.error}',
+                        style: TextStyle(color: _getTextColor()),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                  ),
-                );
-              }
+                  );
+                }
 
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
-                  ),
-                );
-              }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
+                    ),
+                  );
+                }
 
-              final docs = snapshot.data?.docs ?? [];
-              if (docs.isEmpty) {
-                return _buildEmptyState();
-              }
+                final docs = snapshot.data?.docs ?? [];
+                if (docs.isEmpty) {
+                  return _buildEmptyState();
+                }
 
-              return ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-                reverse: true,
-                itemCount: docs.length,
-                itemBuilder: (context, index) {
-                  final doc = docs[index];
-                  final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-                  final Timestamp? timestamp = data['timestamp'] as Timestamp?;
-                  final DateTime messageDate = timestamp != null ? timestamp.toDate() : DateTime.now();
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                  reverse: true,
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final doc = docs[index];
+                    final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+                    final Timestamp? timestamp = data['timestamp'] as Timestamp?;
+                    final DateTime messageDate = timestamp != null ? timestamp.toDate() : DateTime.now();
 
-                  bool showDateHeader = false;
-                  if (index == docs.length - 1) {
-                    showDateHeader = true;
-                  } else {
-                    final prevDoc = docs[index + 1].data() as Map<String, dynamic>;
-                    final prevTimestamp = prevDoc['timestamp'] as Timestamp?;
-                    if (prevTimestamp != null) {
-                      DateTime prevDate = prevTimestamp.toDate();
-                      if (messageDate.year != prevDate.year ||
-                          messageDate.month != prevDate.month ||
-                          messageDate.day != prevDate.day) {
+                    bool showDateHeader = false;
+                    if (index == docs.length - 1) {
+                      showDateHeader = true;
+                    } else {
+                      final prevDoc = docs[index + 1].data() as Map<String, dynamic>;
+                      final prevTimestamp = prevDoc['timestamp'] as Timestamp?;
+                      if (prevTimestamp != null) {
+                        DateTime prevDate = prevTimestamp.toDate();
+                        if (messageDate.year != prevDate.year ||
+                            messageDate.month != prevDate.month ||
+                            messageDate.day != prevDate.day) {
+                          showDateHeader = true;
+                        }
+                      } else {
                         showDateHeader = true;
                       }
-                    } else {
-                      showDateHeader = true;
                     }
-                  }
 
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (showDateHeader)
-                        _buildDateHeader(messageDate),
-                      _buildMessageBubble(doc),
-                    ],
-                  );
-                },
-              );
-            },
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (showDateHeader)
+                          _buildDateHeader(messageDate),
+                        _buildMessageBubble(doc),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
           ),
-        ),
 
-        // Text Input Bar
-        _buildInputBar(),
-      ],
+          // Text Input Bar
+          _buildInputBar(),
+        ],
+      ),
     );
   }
 
