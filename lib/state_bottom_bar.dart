@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:safaksayar/pages/home.dart';
 import 'package:safaksayar/pages/info.dart';
 import 'package:safaksayar/pages/profile.dart';
+import 'package:safaksayar/pages/chat_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ManagePages extends StatefulWidget {
   const ManagePages({super.key});
@@ -15,11 +17,16 @@ class ManagePages extends StatefulWidget {
 class _ManagePagesState extends State<ManagePages> {
   String _backgroundImage = 'assets/images/img0.webp'; // Varsayılan arka plan
   int _currentIndex = 0;
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const InfoScreen(),
-    const ProfileScreen()
-  ];
+  bool _showChat = false;
+
+  List<Widget> get _screens {
+    return [
+      const HomeScreen(),
+      const InfoScreen(),
+      if (_showChat) const ChatScreen(),
+      const ProfileScreen()
+    ];
+  }
 
   void _onItemTapped(int index) {
     setState(() {
@@ -41,6 +48,62 @@ class _ManagePagesState extends State<ManagePages> {
   void initState() {
     super.initState();
     _loadTheme();
+    _listenToChatConfig();
+  }
+
+  void _listenToChatConfig() {
+    FirebaseFirestore.instance
+        .collection('parameter')
+        .doc('config')
+        .snapshots()
+        .listen((doc) {
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        final showChatVal = data['showChat'] as bool? ?? false;
+        if (showChatVal != _showChat) {
+          setState(() {
+            _showChat = showChatVal;
+            // Adjust index if out of bounds after toggle
+            if (!_showChat && _currentIndex == 2) {
+              _currentIndex = 0;
+            } else if (!_showChat && _currentIndex == 3) {
+              _currentIndex = 2;
+            }
+          });
+        }
+      }
+    });
+  }
+
+  Widget _buildAppBarTitle() {
+    String titleText = 'İZLEME EKRANI';
+    if (_showChat) {
+      if (_currentIndex == 0) {
+        titleText = 'İZLEME EKRANI';
+      } else if (_currentIndex == 1) {
+        titleText = 'BİLGİLENDİRME EKRANI';
+      } else if (_currentIndex == 2) {
+        titleText = 'ASKER SOHBET';
+      } else if (_currentIndex == 3) {
+        titleText = 'YÖNETİM PANELİ';
+      }
+    } else {
+      if (_currentIndex == 0) {
+        titleText = 'İZLEME EKRANI';
+      } else if (_currentIndex == 1) {
+        titleText = 'BİLGİLENDİRME EKRANI';
+      } else if (_currentIndex == 2) {
+        titleText = 'YÖNETİM PANELİ';
+      }
+    }
+    return Text(
+      titleText,
+      style: TextStyle(
+          color: _backgroundImage == 'assets/images/img0.webp'
+              ? Colors.black
+              : Colors.white,
+          fontWeight: FontWeight.bold),
+    );
   }
 
   @override
@@ -65,32 +128,7 @@ class _ManagePagesState extends State<ManagePages> {
             systemOverlayStyle: _backgroundImage == 'assets/images/img0.webp'
                 ? SystemUiOverlayStyle.dark
                 : SystemUiOverlayStyle.light,
-            title: _currentIndex == 0
-                ? Text(
-                    'İZLEME EKRANI',
-                    style: TextStyle(
-                        color: _backgroundImage == 'assets/images/img0.webp'
-                            ? Colors.black
-                            : Colors.white,
-                        fontWeight: FontWeight.bold),
-                  )
-                : _currentIndex == 1
-                    ? Text(
-                        'BİLGİLENDİRME EKRANI',
-                        style: TextStyle(
-                            color: _backgroundImage == 'assets/images/img0.webp'
-                                ? Colors.black
-                                : Colors.white,
-                            fontWeight: FontWeight.bold),
-                      )
-                    : Text(
-                        'YÖNETİM PANELİ',
-                        style: TextStyle(
-                            color: _backgroundImage == 'assets/images/img0.webp'
-                                ? Colors.black
-                                : Colors.white,
-                            fontWeight: FontWeight.bold),
-                      ),
+            title: _buildAppBarTitle(),
           ),
           body: _screens[_currentIndex],
           bottomNavigationBar: SafeArea(
@@ -115,11 +153,19 @@ class _ManagePagesState extends State<ManagePages> {
                         child: _buildNavItem(Icons.info, 'Bilgi', 1),
                       ),
                     ),
+                    if (_showChat)
+                      Expanded(
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => _onItemTapped(2),
+                          child: _buildNavItem(Icons.chat_bubble_outline, 'Sohbet', 2),
+                        ),
+                      ),
                     Expanded(
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () => _onItemTapped(2),
-                        child: _buildNavItem(Icons.settings, 'Profil', 2),
+                        onTap: () => _onItemTapped(_showChat ? 3 : 2),
+                        child: _buildNavItem(Icons.settings, 'Profil', _showChat ? 3 : 2),
                       ),
                     ),
                   ],
@@ -134,6 +180,9 @@ class _ManagePagesState extends State<ManagePages> {
 
   Widget _buildNavItem(IconData icon, String label, int index) {
     bool isSelected = _currentIndex == index;
+    double iconSize = _showChat ? 22 : 26;
+    double spacing = _showChat ? 4.0 : 8.0;
+    double fontSize = _showChat ? 12.0 : 14.0;
     return Container(
       alignment: Alignment.center, // İçeriği ortalamak için
       child: Row(
@@ -144,29 +193,32 @@ class _ManagePagesState extends State<ManagePages> {
         children: [
           Icon(
             icon,
-            size: 26,
+            size: iconSize,
             color: _backgroundImage == 'assets/images/img0.webp'
                 ? (_currentIndex == index ? Colors.black : Colors.grey[700])
                 : (_currentIndex == index ? Colors.white : Colors.grey[400]),
           ),
-          Visibility(
-            visible: isSelected,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              child: Padding(
-                padding: const EdgeInsets.only(left: 8.0),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: _backgroundImage == 'assets/images/img0.webp'
-                        ? Colors.black54
-                        : Colors.white,
-                    fontWeight: FontWeight.bold,
+          if (isSelected)
+            Flexible(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                child: Padding(
+                  padding: EdgeInsets.only(left: spacing),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      color: _backgroundImage == 'assets/images/img0.webp'
+                          ? Colors.black54
+                          : Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
