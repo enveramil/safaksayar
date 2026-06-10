@@ -17,7 +17,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _backgroundImage = 'assets/images/img0.png';
+  String _backgroundImage = 'assets/images/img0.webp';
   String _name = '';
   String _surname = '';
   String _rutbe = '';
@@ -36,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _backgroundImage = prefs.getString('themeImage') ?? 'assets/images/img0.png';
+      _backgroundImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
       _name = prefs.getString('name') ?? '';
       _surname = prefs.getString('surname') ?? '';
       _rutbe = prefs.getString('rutbe') ?? '';
@@ -48,7 +48,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  bool get _isDefaultTheme => _backgroundImage == 'assets/images/img0.png';
+  bool get _isDefaultTheme => _backgroundImage == 'assets/images/img0.webp';
 
   Color _getTextColor() {
     return _isDefaultTheme ? Colors.black : Colors.white;
@@ -83,13 +83,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _getCommandLogo() {
     switch (_kuvvetKomutanligi.trim().toLowerCase()) {
       case 'kara':
-        return 'assets/images/Kara.png';
+        return 'assets/images/Kara.webp';
       case 'deniz':
-        return 'assets/images/Deniz.png';
+        return 'assets/images/Deniz.webp';
       case 'hava':
-        return 'assets/images/Hava.png';
+        return 'assets/images/Hava.webp';
       case 'jandarma':
-        return 'assets/images/Jandarma.png';
+        return 'assets/images/Jandarma.webp';
       default:
         return 'assets/images/app_logo.png';
     }

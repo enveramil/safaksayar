@@ -24,7 +24,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (AdManager.isDev) return;
     InterstitialAd.load(
       adUnitId:
-          'ca-app-pub-4655119937024112/1860231792', // AdMob'dan aldığınız ID
+          'ca-app-pub-4655119937024112/6340277716', // AdMob'dan aldığınız ID
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {

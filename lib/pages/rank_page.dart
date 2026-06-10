@@ -65,7 +65,7 @@ class _RankPageState extends State<RankPage> {
                                       .white, // Resim çerçevesi arka planı
                                 ),
                                 child: Image.asset(
-                                  'assets/images/rank.png', // Resim yolu
+                                  'assets/images/rank.webp', // Resim yolu
                                   fit: BoxFit.contain,
                                 ),
                               ),
@@ -97,7 +97,7 @@ class _RankPageState extends State<RankPage> {
                     );
                   },
                   child: Image.asset(
-                    'assets/images/rank.png', // Resminizin yolu
+                    'assets/images/rank.webp', // Resminizin yolu
                     width: 425, // Resmin genişliği
                     height: 600, // Resmin yüksekliği
                     fit: BoxFit.fitWidth, // Resmi kapsama şekli

@@ -210,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (AdManager.isDev) return;
     await AppOpenAd.load(
       adUnitId:
-          'ca-app-pub-4655119937024112/3302784322', // AdMob'dan aldığınız ID
+          'ca-app-pub-4655119937024112/4080945883', // AdMob'dan aldığınız ID
       request: const AdRequest(),
       adLoadCallback: AppOpenAdLoadCallback(
         onAdLoaded: (ad) {
@@ -722,57 +722,63 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween, // Add this line
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 30, // Size of the avatar
-                backgroundImage: AssetImage(
-                    'assets/images/app_logo.png'), // Replace with your image path
-              ),
-              SizedBox(width: 16), // Space between avatar and text
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name != null && rutbe != null
-                        ? '$name - $rutbe'
-                        : 'Şafak Sayar',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+          Expanded(
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 30, // Size of the avatar
+                  backgroundImage: AssetImage(
+                      'assets/images/app_logo.png'), // Replace with your image path
+                ),
+                SizedBox(width: 16), // Space between avatar and text
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name != null && rutbe != null
+                            ? '$name - $rutbe'
+                            : 'Şafak Sayar',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        surname ?? '2025',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      Text(
+                        remainingDuration.inDays > 0
+                            ? "Şafak: ${remainingDuration.inDays}"
+                            : "Şafak: Bitti :)",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                      Text(
+                        remainingDuration.inDays - 1 == 0
+                            ? "Atarsa: Doğan Güneş"
+                            : remainingDuration.inDays < 1
+                                ? "Atarsa: Atmıyor :)"
+                                : "Atarsa: ${remainingDuration.inDays - 1}",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    surname ?? '2025',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  Text(
-                    remainingDuration.inDays > 0
-                        ? "Şafak: ${remainingDuration.inDays}"
-                        : "Şafak: Bitti :)",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  Text(
-                    remainingDuration.inDays - 1 == 0
-                        ? "Atarsa: Doğan Güneş"
-                        : remainingDuration.inDays < 1
-                            ? "Atarsa: Atmıyor :)"
-                            : "Atarsa: ${remainingDuration.inDays - 1}",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
           Container(
             decoration: BoxDecoration(
@@ -786,7 +792,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             child: Image.asset(
-              'assets/images/$kuvvetKomutanligi.png', // Path to your image
+              'assets/images/$kuvvetKomutanligi.webp', // Path to your image
               width: 50, // Set desired width
               height: 50, // Set desired height
             ),
@@ -1120,7 +1126,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       CrossAxisAlignment.center, // Ortalamak için
                   children: [
                     Image.asset(
-                      'assets/images/Deniz.png',
+                      'assets/images/Deniz.webp',
                       width: 30,
                       height: 30,
                     ),
@@ -1134,7 +1140,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Image.asset(
-                      'assets/images/Deniz.png',
+                      'assets/images/Deniz.webp',
                       width: 30,
                       height: 30,
                     ),
@@ -1158,7 +1164,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       CrossAxisAlignment.center, // Ortalamak için
                   children: [
                     Image.asset(
-                      'assets/images/Hava.png',
+                      'assets/images/Hava.webp',
                       width: 30,
                       height: 30,
                     ),
@@ -1172,7 +1178,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Image.asset(
-                      'assets/images/Hava.png',
+                      'assets/images/Hava.webp',
                       width: 30,
                       height: 30,
                     ),
@@ -1196,7 +1202,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       CrossAxisAlignment.center, // Ortalamak için
                   children: [
                     Image.asset(
-                      'assets/images/Kara.png',
+                      'assets/images/Kara.webp',
                       width: 30,
                       height: 30,
                     ),
@@ -1210,7 +1216,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     Image.asset(
-                      'assets/images/Kara.png',
+                      'assets/images/Kara.webp',
                       width: 30,
                       height: 30,
                     ),

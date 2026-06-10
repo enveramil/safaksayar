@@ -36,7 +36,7 @@
             android:value="2" />
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-4655119937024112~4251663241"/>
+            android:value="ca-app-pub-4655119937024112~3342915993"/>
 
         <!-- HomeWidget Provider Receiver -->
         <receiver android:name="com.bayesa.safaksayar.SafakWidgetProvider" android:exported="true">

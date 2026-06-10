@@ -1,8 +1,28 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:safaksayar/ads/ad_helper.dart';
 
 class AdManager {
-  static const bool isDev = true;
+  static bool isDev = true;
+
+  static Future<void> fetchAdConfig() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('parameter')
+          .doc('config')
+          .get()
+          .timeout(const Duration(seconds: 3));
+      if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
+        if (data.containsKey('isDev')) {
+          isDev = data['isDev'] as bool;
+          print("Loaded ad configuration from Firestore: isDev = $isDev");
+        }
+      }
+    } catch (e) {
+      print("Error fetching ad configuration from Firestore: $e");
+    }
+  }
 
   AppOpenAd? _openAd;
 
@@ -46,7 +66,7 @@ class AdManager {
     if (isDev) return;
     await InterstitialAd.load(
       adUnitId:
-          'ca-app-pub-4655119937024112/1860231792', // AdMob'dan aldığınız ID
+          'ca-app-pub-4655119937024112/6340277716', // AdMob'dan aldığınız ID
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {

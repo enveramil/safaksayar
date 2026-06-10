@@ -13,7 +13,7 @@ class ManagePages extends StatefulWidget {
 }
 
 class _ManagePagesState extends State<ManagePages> {
-  String _backgroundImage = 'assets/images/img0.png'; // Varsayılan arka plan
+  String _backgroundImage = 'assets/images/img0.webp'; // Varsayılan arka plan
   int _currentIndex = 0;
   final List<Widget> _screens = [
     const HomeScreen(),
@@ -31,7 +31,7 @@ class _ManagePagesState extends State<ManagePages> {
   Future<void> _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
     final imagePath = prefs.getString('themeImage') ??
-        'assets/images/img0.png'; // Varsayılan resim
+        'assets/images/img0.webp'; // Varsayılan resim
     setState(() {
       _backgroundImage = imagePath;
     });
@@ -62,14 +62,14 @@ class _ManagePagesState extends State<ManagePages> {
             backgroundColor: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             automaticallyImplyLeading: false,
-            systemOverlayStyle: _backgroundImage == 'assets/images/img0.png'
+            systemOverlayStyle: _backgroundImage == 'assets/images/img0.webp'
                 ? SystemUiOverlayStyle.dark
                 : SystemUiOverlayStyle.light,
             title: _currentIndex == 0
                 ? Text(
                     'İZLEME EKRANI',
                     style: TextStyle(
-                        color: _backgroundImage == 'assets/images/img0.png'
+                        color: _backgroundImage == 'assets/images/img0.webp'
                             ? Colors.black
                             : Colors.white,
                         fontWeight: FontWeight.bold),
@@ -78,7 +78,7 @@ class _ManagePagesState extends State<ManagePages> {
                     ? Text(
                         'BİLGİLENDİRME EKRANI',
                         style: TextStyle(
-                            color: _backgroundImage == 'assets/images/img0.png'
+                            color: _backgroundImage == 'assets/images/img0.webp'
                                 ? Colors.black
                                 : Colors.white,
                             fontWeight: FontWeight.bold),
@@ -86,7 +86,7 @@ class _ManagePagesState extends State<ManagePages> {
                     : Text(
                         'YÖNETİM PANELİ',
                         style: TextStyle(
-                            color: _backgroundImage == 'assets/images/img0.png'
+                            color: _backgroundImage == 'assets/images/img0.webp'
                                 ? Colors.black
                                 : Colors.white,
                             fontWeight: FontWeight.bold),
@@ -145,7 +145,7 @@ class _ManagePagesState extends State<ManagePages> {
           Icon(
             icon,
             size: 26,
-            color: _backgroundImage == 'assets/images/img0.png'
+            color: _backgroundImage == 'assets/images/img0.webp'
                 ? (_currentIndex == index ? Colors.black : Colors.grey[700])
                 : (_currentIndex == index ? Colors.white : Colors.grey[400]),
           ),
@@ -158,7 +158,7 @@ class _ManagePagesState extends State<ManagePages> {
                 child: Text(
                   label,
                   style: TextStyle(
-                    color: _backgroundImage == 'assets/images/img0.png'
+                    color: _backgroundImage == 'assets/images/img0.webp'
                         ? Colors.black54
                         : Colors.white,
                     fontWeight: FontWeight.bold,

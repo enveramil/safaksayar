@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:safaksayar/pages/splash.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:safaksayar/ads/ad_manager.dart';
 import 'Services/notification_service.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:home_widget/home_widget.dart';
@@ -13,6 +14,7 @@ void main() async {
   await HomeWidget.setAppGroupId('group.com.bayesa.ios.safaksayar2026');
   MobileAds.instance.initialize();
   await Firebase.initializeApp();
+  await AdManager.fetchAdConfig();
   NotificationService().initNotification();
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent, // Status Bar rengi

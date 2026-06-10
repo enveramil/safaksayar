@@ -8,9 +8,9 @@ class ThemePage extends StatefulWidget {
 }
 
 class _ThemePageState extends State<ThemePage> {
-  String _backgroundImage = 'assets/images/img0.png';
+  String _backgroundImage = 'assets/images/img0.webp';
   final List<String> themes = [
-    for (int i = 0; i <= 29; i++) 'assets/images/img$i.png'
+    for (int i = 0; i <= 29; i++) 'assets/images/img$i.webp'
   ];
 
   Future<void> _changeTheme(String newImagePath) async {
