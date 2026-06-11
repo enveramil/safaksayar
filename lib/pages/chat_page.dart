@@ -25,6 +25,8 @@ class _ChatScreenState extends State<ChatScreen> {
   String _kuvvetKomutanligi = 'Kara';
   String _askerlikYeri = 'Belirtilmedi';
   String _backgroundImage = 'assets/images/img0.webp';
+  bool _eulaAccepted = false;
+  List<String> _blockedUserIds = [];
 
   @override
   void initState() {
@@ -43,6 +45,8 @@ class _ChatScreenState extends State<ChatScreen> {
         _kuvvetKomutanligi = prefs.getString('kuvvet_komutanligi') ?? 'Kara';
         _askerlikYeri = prefs.getString('askerlik_yeri') ?? 'Bilinmiyor';
         _backgroundImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
+        _eulaAccepted = prefs.getBool('eulaAccepted') ?? false;
+        _blockedUserIds = prefs.getStringList('blockedUsers') ?? [];
         _isLoading = false;
       });
     } catch (e) {
@@ -146,6 +150,10 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
 
+    if (!_eulaAccepted) {
+      return _buildEulaOverlay();
+    }
+
     final queryStream = _isGeneralSelected
         ? FirebaseFirestore.instance
             .collection('general_chat')
@@ -199,7 +207,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   );
                 }
 
-                final docs = snapshot.data?.docs ?? [];
+                final allDocs = snapshot.data?.docs ?? [];
+                // Filter out messages from blocked users
+                final docs = allDocs.where((doc) {
+                  final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+                  final String senderId = data['senderId'] ?? '';
+                  return !_blockedUserIds.contains(senderId);
+                }).toList();
+
                 if (docs.isEmpty) {
                   return _buildEmptyState();
                 }
@@ -426,129 +441,140 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6.0),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
-        ),
-        decoration: BoxDecoration(
-          color: isMe
-              ? Colors.blueAccent.withValues(alpha: 0.9)
-              : _getCardColor(),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
-            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
+      child: GestureDetector(
+        onLongPress: () {
+          _showOptionsBottomSheet(
+            messageId: doc.id,
+            senderId: senderId,
+            senderName: senderName,
+            messageText: messageText,
+            isMe: isMe,
+          );
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 6.0),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.78,
           ),
-          border: Border.all(
-            color: isMe ? Colors.blueAccent.shade400 : _getBorderColor(),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
+          decoration: BoxDecoration(
+            color: isMe
+                ? Colors.blueAccent.withValues(alpha: 0.9)
+                : _getCardColor(),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft: isMe ? const Radius.circular(16) : const Radius.circular(4),
+              bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(16),
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Sender identity and time row (always show at the top of the bubble)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Rank badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: isMe
-                                ? Colors.white.withValues(alpha: 0.15)
-                                : _getTextColor().withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: isMe
-                                  ? Colors.white.withValues(alpha: 0.25)
-                                  : _getTextColor().withValues(alpha: 0.15),
-                              width: 0.5,
-                            ),
-                          ),
-                          child: Text(
-                            senderRank.toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: isMe ? Colors.white : _getTextColor(),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        // Force Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                          decoration: BoxDecoration(
-                            color: badgeColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            _formatKuvvet(senderKuvvet),
-                            style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        // Name
-                        Flexible(
-                          child: Text(
-                            isMe ? 'Sen' : senderName,
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.bold,
-                              color: isMe ? Colors.white : _getTextColor(),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    timeStr,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: isMe 
-                          ? Colors.white.withValues(alpha: 0.75) 
-                          : _getSubtitleColor().withValues(alpha: 0.75),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              
-              // Message text
-              Text(
-                messageText,
-                style: TextStyle(
-                  color: isMe ? Colors.white : _getTextColor(),
-                  fontSize: 14.5,
-                  height: 1.3,
-                ),
+            border: Border.all(
+              color: isMe ? Colors.blueAccent.shade400 : _getBorderColor(),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
             ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Sender identity and time row (always show at the top of the bubble)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Rank badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: isMe
+                                  ? Colors.white.withValues(alpha: 0.15)
+                                  : _getTextColor().withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: isMe
+                                    ? Colors.white.withValues(alpha: 0.25)
+                                    : _getTextColor().withValues(alpha: 0.15),
+                                width: 0.5,
+                              ),
+                            ),
+                            child: Text(
+                              senderRank.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: isMe ? Colors.white : _getTextColor(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          // Force Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: badgeColor,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _formatKuvvet(senderKuvvet),
+                              style: const TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          // Name
+                          Flexible(
+                            child: Text(
+                              isMe ? 'Sen' : senderName,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: isMe ? Colors.white : _getTextColor(),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      timeStr,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isMe 
+                            ? Colors.white.withValues(alpha: 0.75) 
+                            : _getSubtitleColor().withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                
+                // Message text
+                Text(
+                  messageText,
+                  style: TextStyle(
+                    color: isMe ? Colors.white : _getTextColor(),
+                    fontSize: 14.5,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -683,6 +709,332 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildEulaOverlay() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: _backgroundImage == 'assets/images/img0.webp'
+          ? Colors.white
+          : const Color(0xFF0F172A),
+      child: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(28.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 20),
+                    const Icon(
+                      Icons.gavel_rounded,
+                      size: 64,
+                      color: Colors.blueAccent,
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Sohbet Odası Sözleşmesi (EULA)',
+                      style: TextStyle(
+                        color: _getTextColor(),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Son Güncelleme: Haziran 2026',
+                      style: TextStyle(
+                        color: _getSubtitleColor().withValues(alpha: 0.7),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Divider(color: _getBorderColor()),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Şafak Sayar Sohbet Odalarına hoş geldiniz. Topluluğumuzun güvenliğini ve saygı çerçevesini korumak amacıyla, sohbet özelliğini kullanmadan önce aşağıdaki Kullanıcı Sözleşmesi (EULA) şartlarını kabul etmeniz zorunludur:\n\n'
+                      '1. SIFIR TOLERANS POLİTİKASI\n'
+                      'Uygulamamız içerisinde hiçbir şekilde küfür, hakaret, taciz, nefret söylemi, ayrımcılık, pornografik içerik veya yasa dışı paylaşımlara İZİN VERİLMEZ. Bu tür paylaşımlara karşı sıfır tolerans gösterilmektedir.\n\n'
+                      '2. İÇERİK ŞİKAYET ETME (FLAG)\n'
+                      'Sözleşmeye aykırı veya sakıncalı bir mesajla karşılaştığınızda, ilgili mesajın üzerine uzun süre basılı tutarak "Mesajı Şikayet Et" seçeneğini kullanabilirsiniz. Şikayet edilen içerikler geliştiricilerimiz tarafından en geç 24 saat içinde incelenerek silinecektir.\n\n'
+                      '3. KULLANICI ENGELLEME (BLOCK)\n'
+                      'Sizi rahatsız eden veya tacizci davranışlar sergileyen herhangi bir kullanıcıyı, mesajına uzun basarak "Kullanıcıyı Engelle" seçeneği ile engelleyebilirsiniz. Engellediğiniz kullanıcının tüm mesajları anında sohbet akışınızdan kalıcı olarak kaldırılacaktır.\n\n'
+                      '4. HESAP UZAKLAŞTIRMA VE YAPTIRIMLAR\n'
+                      'Sözleşme kurallarını ihlal eden veya diğer kullanıcıları rahatsız eden hesaplar, şikayetlerin değerlendirilmesi sonucunda 24 saat içerisinde sistemden kalıcı olarak uzaklaştırılır ve tüm mesajları silinir.\n\n'
+                      '5. KİŞİSEL VERİLER VE BEYAN\n'
+                      'Sohbet odasında paylaştığınız tüm mesajların sorumluluğu tarafınıza aittir. Diğer kullanıcılarla kişisel bilgilerinizi paylaşmamanız önerilir.',
+                      style: TextStyle(
+                        color: _getTextColor().withValues(alpha: 0.95),
+                        fontSize: 14.5,
+                        height: 1.6,
+                      ),
+                      textAlign: TextAlign.start,
+                    ),
+                    const SizedBox(height: 40),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Fixed bottom accept button container
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 16.0),
+              decoration: BoxDecoration(
+                color: _backgroundImage == 'assets/images/img0.webp'
+                    ? Colors.grey.shade50
+                    : const Color(0xFF1E293B),
+                border: Border(
+                  top: BorderSide(color: _getBorderColor(), width: 1),
+                ),
+              ),
+              child: ElevatedButton(
+                onPressed: _acceptEula,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blueAccent,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 52),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Text(
+                  'Okudum, Kabul Ediyorum',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _acceptEula() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('eulaAccepted', true);
+      setState(() {
+        _eulaAccepted = true;
+      });
+    } catch (e) {
+      print('Error saving EULA acceptance: $e');
+    }
+  }
+
+  void _showOptionsBottomSheet({
+    required String messageId,
+    required String senderId,
+    required String senderName,
+    required String messageText,
+    required bool isMe,
+  }) {
+    showModalBottomSheet(
+      backgroundColor: Colors.transparent,
+      context: context,
+      builder: (BuildContext context) {
+        final bool isDark = !_isDefaultTheme;
+        final Color modalBgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: modalBgColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Text(
+                    isMe ? 'Kendi Mesajınız' : '$senderName kullanıcısının mesajı',
+                    style: TextStyle(
+                      color: _getTextColor(),
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Divider(color: _getBorderColor()),
+                if (!isMe) ...[
+                  ListTile(
+                    leading: const Icon(Icons.flag_outlined, color: Colors.amber),
+                    title: Text(
+                      'Mesajı Şikayet Et',
+                      style: TextStyle(color: _getTextColor()),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _reportMessage(messageId, senderId, senderName, messageText);
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.block_outlined, color: Colors.redAccent),
+                    title: Text(
+                      'Kullanıcıyı Engelle',
+                      style: TextStyle(color: _getTextColor()),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _blockUser(senderId, senderName, messageId, messageText);
+                    },
+                  ),
+                ] else
+                  Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Text(
+                      'Bu sizin kendi mesajınızdır. Şikayet etme veya engelleme seçeneği bulunmamaktadır.',
+                      style: TextStyle(color: _getSubtitleColor(), fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _reportMessage(String messageId, String senderId, String senderName, String messageText) async {
+    try {
+      await FirebaseFirestore.instance.collection('reports').add({
+        'type': 'flag_message',
+        'reportedMessageId': messageId,
+        'reportedSenderId': senderId,
+        'reportedSenderName': senderName,
+        'reportedMessageText': messageText,
+        'reporterUserId': _userId,
+        'reporterUserName': _formatDisplayName(_name, _surname),
+        'timestamp': FieldValue.serverTimestamp(),
+        'actionTaken': false,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Şikayetiniz iletildi. 24 saat içerisinde incelenecektir.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error reporting message: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Şikayet iletilemedi: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
+  void _blockUser(String senderId, String senderName, String messageId, String messageText) async {
+    final bool confirm = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Kullanıcıyı Engelle?',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            '$senderName adlı kullanıcıyı engellemek istediğinizden emin misiniz? Bu kullanıcının tüm mesajları anında gizlenecektir.',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(
+                'Vazgeç',
+                style: TextStyle(color: Colors.white54),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text('Engelle'),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+
+    if (!confirm) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final currentBlocks = prefs.getStringList('blockedUsers') ?? [];
+      if (!currentBlocks.contains(senderId)) {
+        currentBlocks.add(senderId);
+        await prefs.setStringList('blockedUsers', currentBlocks);
+      }
+
+      await FirebaseFirestore.instance.collection('reports').add({
+        'type': 'block_user',
+        'blockedUserId': senderId,
+        'blockedUserName': senderName,
+        'relatedMessageId': messageId,
+        'relatedMessageText': messageText,
+        'blockedByUserId': _userId,
+        'blockedByUserName': _formatDisplayName(_name, _surname),
+        'timestamp': FieldValue.serverTimestamp(),
+        'actionTaken': false,
+      });
+
+      setState(() {
+        _blockedUserIds = currentBlocks;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$senderName engellendi ve mesajları gizlendi.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error blocking user: $e');
+    }
   }
 
   @override
