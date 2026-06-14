@@ -4,7 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final String backgroundImage;
+  const ChatScreen({super.key, required this.backgroundImage});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -24,7 +25,6 @@ class _ChatScreenState extends State<ChatScreen> {
   String _rutbe = 'ER';
   String _kuvvetKomutanligi = 'Kara';
   String _askerlikYeri = 'Belirtilmedi';
-  String _backgroundImage = 'assets/images/img0.webp';
   bool _eulaAccepted = false;
   List<String> _blockedUserIds = [];
 
@@ -37,27 +37,30 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _loadUserInfo() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      setState(() {
-        _userId = prefs.getString('userId') ?? 'user_${DateTime.now().millisecondsSinceEpoch}';
-        _name = prefs.getString('name') ?? 'Asker';
-        _surname = prefs.getString('surname') ?? '';
-        _rutbe = prefs.getString('rutbe') ?? 'ER';
-        _kuvvetKomutanligi = prefs.getString('kuvvet_komutanligi') ?? 'Kara';
-        _askerlikYeri = prefs.getString('askerlik_yeri') ?? 'Bilinmiyor';
-        _backgroundImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
-        _eulaAccepted = prefs.getBool('eulaAccepted') ?? false;
-        _blockedUserIds = prefs.getStringList('blockedUsers') ?? [];
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _userId = prefs.getString('userId') ?? 'user_${DateTime.now().millisecondsSinceEpoch}';
+          _name = prefs.getString('name') ?? 'Asker';
+          _surname = prefs.getString('surname') ?? '';
+          _rutbe = prefs.getString('rutbe') ?? 'ER';
+          _kuvvetKomutanligi = prefs.getString('kuvvet_komutanligi') ?? 'Kara';
+          _askerlikYeri = prefs.getString('askerlik_yeri') ?? 'Bilinmiyor';
+          _eulaAccepted = prefs.getBool('eulaAccepted') ?? false;
+          _blockedUserIds = prefs.getStringList('blockedUsers') ?? [];
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       print('Error loading user info for chat: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  bool get _isDefaultTheme => _backgroundImage == 'assets/images/img0.webp';
+  bool get _isDefaultTheme => widget.backgroundImage == 'assets/images/img0.webp';
 
   Color _getTextColor() {
     return _isDefaultTheme ? Colors.black : Colors.white;
@@ -715,7 +718,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       width: double.infinity,
       height: double.infinity,
-      color: _backgroundImage == 'assets/images/img0.webp'
+      color: _isDefaultTheme
           ? Colors.white
           : const Color(0xFF0F172A),
       child: SafeArea(
@@ -784,9 +787,9 @@ class _ChatScreenState extends State<ChatScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 16.0),
               decoration: BoxDecoration(
-                color: _backgroundImage == 'assets/images/img0.webp'
-                    ? Colors.grey.shade50
-                    : const Color(0xFF1E293B),
+                color: _isDefaultTheme
+                  ? Colors.grey.shade50
+                  : const Color(0xFF1E293B),
                 border: Border(
                   top: BorderSide(color: _getBorderColor(), width: 1),
                 ),

@@ -11,7 +11,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class InfoScreen extends StatefulWidget {
-  const InfoScreen({super.key});
+  final String backgroundImage;
+  const InfoScreen({super.key, required this.backgroundImage});
 
   @override
   State<InfoScreen> createState() => _InfoScreenState();
@@ -112,365 +113,223 @@ class _InfoScreenState extends State<InfoScreen> {
     super.dispose();
   }
 
+  bool get _isDefaultTheme => widget.backgroundImage == 'assets/images/img0.webp';
+
+  Color _getTextColor() {
+    return _isDefaultTheme ? Colors.black : Colors.white;
+  }
+
+  Color _getCardColor() {
+    return _isDefaultTheme
+        ? Colors.white.withValues(alpha: 0.9)
+        : Colors.black.withValues(alpha: 0.45);
+  }
+
+  Color _getBorderColor() {
+    return _isDefaultTheme
+        ? Colors.grey.shade300
+        : Colors.white.withValues(alpha: 0.15);
+  }
+
+  Color _getSubtitleColor() {
+    return _isDefaultTheme ? Colors.black54 : Colors.white70;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
-        child: SingleChildScrollView(
-      child: Column(
-        children: [
-          SizedBox(height: 15),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.blueAccent,
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
+      child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const SizedBox(height: 15),
+                _buildInfoTile(
+                  title: 'Sıkça Sorulan Sorular',
+                  subtitle: 'Aklınıza takılan tüm soruları bu kısımdan giderebilirsiniz',
+                  imagePath: 'assets/images/question-mark.webp',
+                  accentColor: Colors.blueAccent,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const FaqPage()),
+                    );
+                  },
                 ),
+                _buildInfoTile(
+                  title: 'Rütbeler',
+                  subtitle: 'Askeri rütbelere bakmak için tıklayınız.',
+                  imagePath: 'assets/images/military-rank.webp',
+                  accentColor: Colors.deepPurpleAccent,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const RankPage()),
+                    );
+                  },
+                ),
+                _buildInfoTile(
+                  title: 'Kim Milyoner Olmak İster',
+                  subtitle: 'Canın sıkıldıkça soru çöz',
+                  imagePath: 'assets/images/milyoner.webp',
+                  accentColor: Colors.amber,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const QuizPage()),
+                    );
+                    AdManager().loadInterstitialAd();
+                  },
+                ),
+                _buildInfoTile(
+                  title: 'Not Tut',
+                  subtitle: 'Askerlik anılarını kayıt altına al',
+                  imagePath: 'assets/images/notes.webp',
+                  accentColor: Colors.greenAccent,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => NotesScreen(context: context),
+                      ),
+                    );
+                  },
+                ),
+                _buildInfoTile(
+                  title: 'İller ve Plaka Kodları',
+                  subtitle: 'Türkiye’nin illerini ve plaka kodlarını görün',
+                  imagePath: 'assets/images/license.webp',
+                  accentColor: Colors.cyan,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => IllerPlakaScreen()),
+                    );
+                  },
+                ),
+                _buildInfoTile(
+                  title: 'Şafak Sözleri',
+                  subtitle: 'Asker de can sıkıntısına birebir sözler',
+                  imagePath: 'assets/images/pen.webp',
+                  accentColor: Colors.redAccent,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const SafakSozleri()),
+                    );
+                  },
+                ),
+                _buildInfoTile(
+                  title: 'Uygulamayı Paylaşın',
+                  subtitle: 'Askerlik görevini yerine getirecek arkadaşlarınızla ve devrelerinizle uygulamayı paylaşmayı unutmayın',
+                  imagePath: 'assets/images/share.webp',
+                  accentColor: Colors.teal,
+                  onTap: () {
+                    final String shareLink = Platform.isIOS
+                        ? 'https://apps.apple.com/app/id6777999683'
+                        : 'https://play.google.com/store/apps/details?id=com.bayesa.safaksayar';
+                    final box = context.findRenderObject() as RenderBox?;
+                    final Rect? sharePositionOrigin = box != null
+                        ? box.localToGlobal(Offset.zero) & box.size
+                        : null;
+                    Share.share(shareLink, sharePositionOrigin: sharePositionOrigin);
+                  },
+                ),
+                const SizedBox(height: 80),
               ],
             ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10), // İçerik için yatay ve dikey padding
-              leading: CircleAvatar(
-                child: Image.asset('assets/images/question-mark.webp'),
-              ),
-              title: const Text(
-                'Sıkça Sorulan Sorular',
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              subtitle: const Text(
-                'Aklınıza takılan tüm soruları bu kısımdan giderebilirsiniz',
-                style: TextStyle(color: Colors.white70),
-              ),
-              trailing:
-                  const Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => FaqPage()),
-                );
-              },
-            ),
           ),
+        );
+  }
 
-          // Rütbeler section
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.blueAccent,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => RankPage()),
-                );
-              },
-              child: ListTile(
-                contentPadding: EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10), // İçerik için yatay ve dikey padding
-                leading: CircleAvatar(
-                  child: Image.asset('assets/images/military-rank.webp'),
-                ),
-                title: Text(
-                  'Rütbeler',
-                  style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  'Askeri rütbelere bakmak için tıklayınız.',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                trailing:
-                    Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              ),
-            ),
+  Widget _buildInfoTile({
+    required String title,
+    required String subtitle,
+    required String imagePath,
+    required Color accentColor,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: _getCardColor(),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _getBorderColor(), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: _isDefaultTheme ? 0.04 : 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
-
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.blueAccent,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10), // İçerik için yatay ve dikey padding
-              leading: CircleAvatar(
-                child: Image.asset('assets/images/milyoner.webp'),
-              ),
-              title: Text(
-                'Kim Milyoner Olmak İster',
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                'Canın sıkıldıkça soru çöz',
-                style: TextStyle(color: Colors.white70),
-              ),
-              trailing:
-                  Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => QuizPage()),
-                );
-                AdManager().loadInterstitialAd();
-              },
-            ),
-          ),
-
-          // not tutma
-
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.blueAccent,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10), // İçerik için yatay ve dikey padding
-              leading: CircleAvatar(
-                child: Image.asset('assets/images/notes.webp'),
-              ),
-              title: Text(
-                'Not Tut',
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                'Askerlik anılarını kayıt altına al',
-                style: TextStyle(color: Colors.white70),
-              ),
-              trailing:
-                  Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => NotesScreen(
-                            context: context,
-                          )),
-                );
-              },
-            ),
-          ),
-
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.blueAccent,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10), // İçerik için yatay ve dikey padding
-              leading: CircleAvatar(
-                child: Image.asset('assets/images/license.webp'),
-              ),
-              title: Text(
-                'İller ve Plaka Kodları',
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                'Türkiye’nin illerini ve plaka kodlarını görün',
-                style: TextStyle(color: Colors.white70),
-              ),
-              trailing:
-                  Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => IllerPlakaScreen()),
-                );
-              },
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              color: Colors.blueAccent,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black26,
-                  blurRadius: 6,
-                  offset: Offset(0, 3),
-                ),
-              ],
-            ),
-            child: ListTile(
-              contentPadding: EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10), // İçerik için yatay ve dikey padding
-              leading: CircleAvatar(
-                child: Image.asset('assets/images/pen.webp'),
-              ),
-              title: Text(
-                'Şafak Sözleri',
-                style: TextStyle(
-                    fontSize: 20,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                'Asker de can sıkıntısına birebir sözler',
-                style: TextStyle(color: Colors.white70),
-              ),
-              trailing:
-                  Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => SafakSozleri()),
-                );
-              },
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              final String shareLink = Platform.isIOS
-                  ? 'https://apps.apple.com/app/id6777999683'
-                  : 'https://play.google.com/store/apps/details?id=com.bayesa.safaksayar';
-              final box = context.findRenderObject() as RenderBox?;
-              final Rect? sharePositionOrigin = box != null
-                  ? box.localToGlobal(Offset.zero) & box.size
-                  : null;
-              Share.share(shareLink, sharePositionOrigin: sharePositionOrigin);
-            },
-            child: Container(
-              margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.blueAccent,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 6,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: ListTile(
-                contentPadding: EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10), // İçerik için yatay ve dikey padding
-                leading: CircleAvatar(
-                  child: Image.asset('assets/images/share.webp'),
-                ),
-                title: Text(
-                  'Uygulamayı Paylaşın',
-                  style: TextStyle(
-                      fontSize: 20,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  'Askerlik görevini yerine getirecek arkadaşlarınızla ve devrelerinizle uygulamayı paylaşmayı unutmayın',
-                  style: TextStyle(color: Colors.white70),
-                ),
-                trailing:
-                    Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-              ),
-            ),
-          ),
-          //TODO: Sonra bakılacak.
-          // Container(
-          //   margin: EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-          //   decoration: BoxDecoration(
-          //     borderRadius: BorderRadius.circular(12),
-          //     color: Colors.blueAccent,
-          //     boxShadow: [
-          //       BoxShadow(
-          //         color: Colors.black26,
-          //         blurRadius: 6,
-          //         offset: Offset(0, 3),
-          //       ),
-          //     ],
-          //   ),
-          //   child: ListTile(
-          //     contentPadding: EdgeInsets.symmetric(
-          //         horizontal: 20,
-          //         vertical: 10), // İçerik için yatay ve dikey padding
-          //     leading: CircleAvatar(
-          //       child: Image.asset('assets/images/bell.webp'),
-          //     ),
-          //     title: Text(
-          //       'Bildirim Servisi',
-          //       style: TextStyle(
-          //           fontSize: 20,
-          //           color: Colors.white,
-          //           fontWeight: FontWeight.bold),
-          //     ),
-          //     subtitle: Text(
-          //       'İstenilen vakitte şafak bildirimi yapılır',
-          //       style: TextStyle(color: Colors.white70),
-          //     ),
-          //     trailing:
-          //         Icon(Icons.arrow_forward_ios_outlined, color: Colors.white),
-          //     onTap: () {
-          //       //_showInterstitialAd();
-          //       Navigator.push(
-          //         context,
-          //         MaterialPageRoute(builder: (context) => NotificationScreen()),
-          //       );
-          //     },
-          //   ),
-          // ),
         ],
       ),
-    ));
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: _isDefaultTheme 
+                        ? accentColor.withValues(alpha: 0.1) 
+                        : Colors.white.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _isDefaultTheme 
+                          ? accentColor.withValues(alpha: 0.3) 
+                          : Colors.white.withValues(alpha: 0.12),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Image.asset(
+                    imagePath,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: _getTextColor(),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontSize: 11,
+                          height: 1.3,
+                          color: _getSubtitleColor(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: _getSubtitleColor().withValues(alpha: 0.6),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

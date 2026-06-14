@@ -79,6 +79,7 @@ class _SplashScreenState extends State<SplashScreen> {
     String? surname = prefs.getString('surname');
     String? askerlikYeri = prefs.getString('askerlik_yeri');
     String? memleket = prefs.getString('memleket');
+    String themeImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
 
     if (name != null &&
         surname != null &&
@@ -87,7 +88,7 @@ class _SplashScreenState extends State<SplashScreen> {
       // Eğer veriler mevcutsa ana sayfaya yönlendir
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => ManagePages()),
+        MaterialPageRoute(builder: (context) => ManagePages(backgroundImage: themeImage)),
       );
       // Reklam göster
       _loadInterstitialAd(); // Reklamı yükle

@@ -10,14 +10,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:in_app_review/in_app_review.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final String backgroundImage;
+  const ProfileScreen({super.key, required this.backgroundImage});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _backgroundImage = 'assets/images/img0.webp';
   String _name = '';
   String _surname = '';
   String _rutbe = '';
@@ -35,20 +35,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _backgroundImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
-      _name = prefs.getString('name') ?? '';
-      _surname = prefs.getString('surname') ?? '';
-      _rutbe = prefs.getString('rutbe') ?? '';
-      _kuvvetKomutanligi = prefs.getString('kuvvet_komutanligi') ?? '';
-      _askerlikYeri = prefs.getString('askerlik_yeri') ?? '';
-      _memleket = prefs.getString('memleket') ?? '';
-      _sulusTarihi = prefs.getString('sulus_tarihi') ?? '';
-      _terhisTarihi = prefs.getString('end_date') ?? '';
-    });
+    if (mounted) {
+      setState(() {
+        _name = prefs.getString('name') ?? '';
+        _surname = prefs.getString('surname') ?? '';
+        _rutbe = prefs.getString('rutbe') ?? '';
+        _kuvvetKomutanligi = prefs.getString('kuvvet_komutanligi') ?? '';
+        _askerlikYeri = prefs.getString('askerlik_yeri') ?? '';
+        _memleket = prefs.getString('memleket') ?? '';
+        _sulusTarihi = prefs.getString('sulus_tarihi') ?? '';
+        _terhisTarihi = prefs.getString('end_date') ?? '';
+      });
+    }
   }
 
-  bool get _isDefaultTheme => _backgroundImage == 'assets/images/img0.webp';
+  bool get _isDefaultTheme => widget.backgroundImage == 'assets/images/img0.webp';
 
   Color _getTextColor() {
     return _isDefaultTheme ? Colors.black : Colors.white;

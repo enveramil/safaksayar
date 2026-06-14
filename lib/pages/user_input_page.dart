@@ -141,15 +141,29 @@ class _UserInputPageState extends State<UserInputPage> {
     DateTime tempSelectedDate = _selectedDate ?? DateTime.now(); // Geçici tarih
 
     showModalBottomSheet(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       context: context,
       builder: (BuildContext builder) {
         return Container(
-          height: 300,
+          height: 320,
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E293B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
           child: Column(
             children: [
+              const SizedBox(height: 12),
               Container(
-                padding: EdgeInsets.all(16),
+                width: 45,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -159,34 +173,46 @@ class _UserInputPageState extends State<UserInputPage> {
                       },
                       child: Text(
                         'İptal',
-                        style: TextStyle(color: Colors.red, fontSize: 18),
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16, fontWeight: FontWeight.bold),
                       ),
+                    ),
+                    const Text(
+                      'Sülüs Tarihi',
+                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     TextButton(
                       onPressed: () {
                         setState(() {
-                          _selectedDate =
-                              tempSelectedDate; // Seçili olan tarihi ayarla
+                          _selectedDate = tempSelectedDate; // Seçili olan tarihi ayarla
                         });
                         Navigator.of(context).pop(); // Onay
                       },
-                      child: Text(
+                      child: const Text(
                         'Tamam',
-                        style: TextStyle(color: Colors.blue, fontSize: 18),
+                        style: TextStyle(color: Colors.blueAccent, fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
                 ),
               ),
+              const Divider(color: Colors.white12, height: 1),
               Expanded(
-                child: CupertinoDatePicker(
-                  mode: CupertinoDatePickerMode.date,
-                  initialDateTime: tempSelectedDate,
-                  minimumDate: DateTime(2000),
-                  maximumDate: DateTime(2100),
-                  onDateTimeChanged: (DateTime date) {
-                    tempSelectedDate = date; // Geçici tarihi güncelle
-                  },
+                child: CupertinoTheme(
+                  data: const CupertinoThemeData(
+                    brightness: Brightness.dark,
+                    textTheme: CupertinoTextThemeData(
+                      dateTimePickerTextStyle: TextStyle(color: Colors.white, fontSize: 18),
+                    ),
+                  ),
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.date,
+                    initialDateTime: tempSelectedDate,
+                    minimumDate: DateTime(2000),
+                    maximumDate: DateTime(2100),
+                    onDateTimeChanged: (DateTime date) {
+                      tempSelectedDate = date; // Geçici tarihi güncelle
+                    },
+                  ),
                 ),
               ),
             ],
@@ -436,9 +462,12 @@ class _UserInputPageState extends State<UserInputPage> {
         // Yükleniyor diyaloğunu kapat
         Navigator.of(context).pop();
 
+        final prefs = await SharedPreferences.getInstance();
+        final themeImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
+
         // Ana sayfaya yönlendir
         await Navigator.of(context).pushAndRemoveUntil(
-          _customPageRoute(ManagePages()),
+          _customPageRoute(ManagePages(backgroundImage: themeImage)),
           (Route<dynamic> route) => false,
         );
       }
@@ -990,56 +1019,144 @@ class _UserInputPageState extends State<UserInputPage> {
     required String label,
     required IconData icon,
   }) {
-    return DropdownButtonFormField<String>(
-      value: value,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
-      hint: Text(
-        hint,
-        style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontWeight: FontWeight.w500),
+    return GestureDetector(
+      onTap: () => _showCupertinoPicker(
+        context: context,
+        title: label,
+        items: items,
+        selectedValue: value,
+        onChanged: onChanged,
       ),
-      icon: Icon(Icons.arrow_drop_down, color: Colors.white.withValues(alpha: 0.6)),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.6),
-          fontWeight: FontWeight.w600,
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.6),
+            fontWeight: FontWeight.w600,
+          ),
+          prefixIcon: Icon(icon, color: Colors.blueAccent, size: 22),
+          suffixIcon: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white.withValues(alpha: 0.6)),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.04),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.blueAccent, width: 2.0),
+          ),
         ),
-        prefixIcon: Icon(icon, color: Colors.blueAccent, size: 22),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.04),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.blueAccent, width: 2.0),
+        child: Text(
+          value ?? hint,
+          style: TextStyle(
+            fontSize: 15,
+            color: value != null ? Colors.white : Colors.white.withValues(alpha: 0.3),
+            fontWeight: value != null ? FontWeight.normal : FontWeight.w500,
+          ),
         ),
       ),
-      items: items.map((String item) {
-        return DropdownMenuItem<String>(
-          value: item,
-          child: Text(
-            item,
-            style: const TextStyle(color: Colors.black, fontSize: 15),
+    );
+  }
+
+  void _showCupertinoPicker({
+    required BuildContext context,
+    required String title,
+    required List<String> items,
+    required String? selectedValue,
+    required ValueChanged<String?> onChanged,
+  }) {
+    int initialIndex = selectedValue != null ? items.indexOf(selectedValue) : 0;
+    if (initialIndex == -1) initialIndex = 0;
+    int tempIndex = initialIndex;
+
+    showModalBottomSheet(
+      backgroundColor: Colors.transparent,
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 320,
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E293B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 45,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text(
+                        'İptal',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    Text(
+                      title,
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        onChanged(items[tempIndex]);
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text(
+                        'Tamam',
+                        style: TextStyle(color: Colors.blueAccent, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 1),
+              Expanded(
+                child: CupertinoTheme(
+                  data: const CupertinoThemeData(
+                    textTheme: CupertinoTextThemeData(
+                      pickerTextStyle: TextStyle(color: Colors.white, fontSize: 20),
+                    ),
+                  ),
+                  child: CupertinoPicker(
+                    scrollController: FixedExtentScrollController(initialItem: initialIndex),
+                    itemExtent: 44,
+                    onSelectedItemChanged: (int index) {
+                      tempIndex = index;
+                    },
+                    children: items.map((String item) {
+                      return Center(
+                        child: Text(
+                          item,
+                          style: const TextStyle(color: Colors.white, fontSize: 18),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
-      }).toList(),
-      selectedItemBuilder: (BuildContext context) {
-        return items.map<Widget>((String item) {
-          return Text(
-            item,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-          );
-        }).toList();
       },
-      onChanged: onChanged,
-      dropdownColor: Colors.white,
     );
   }
 }
