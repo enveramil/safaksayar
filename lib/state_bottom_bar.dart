@@ -7,6 +7,7 @@ import 'package:safaksayar/pages/profile.dart';
 import 'package:safaksayar/pages/chat_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'Services/log_service.dart';
 
 class ManagePages extends StatefulWidget {
   final String? backgroundImage;
@@ -33,6 +34,7 @@ class _ManagePagesState extends State<ManagePages> {
   void _onItemTapped(int index) {
     if (_currentIndex != index) {
       HapticFeedback.lightImpact();
+      LogService.instance.onTabChange(index);
       setState(() {
         _loadTheme(); // Arka plan temasını yükle
         _currentIndex = index;

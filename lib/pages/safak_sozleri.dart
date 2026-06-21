@@ -1,7 +1,12 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class SafakSozleri extends StatelessWidget {
-  const SafakSozleri({super.key});
+class SafakSozleri extends StatefulWidget {
+  final String? backgroundImage;
+  const SafakSozleri({super.key, this.backgroundImage});
 
   // Kartların verilerinin bulunduğu liste
   static const List<Map<String, dynamic>> cardData = [
@@ -225,7 +230,7 @@ class SafakSozleri extends StatelessWidget {
           'Onlar bayrakta al, yıldızlar da hilaller. Dönmeyeceklerini bilerek gidiyor. Arkaların da öksüz bırakarak.',
     },
     {
-      'imageUrl': 'assets/images/soz47.webp',
+'imageUrl': 'assets/images/soz47.webp',
       'title': 'Vatan diye bir hastalığa tutulduk. Allah şifa mifa vermesin.',
     },
     {
@@ -244,130 +249,322 @@ class SafakSozleri extends StatelessWidget {
   ];
 
   @override
+  State<SafakSozleri> createState() => _SafakSozleriState();
+}
+
+class _SafakSozleriState extends State<SafakSozleri> {
+  late String _backgroundImage;
+
+  @override
+  void initState() {
+    super.initState();
+    _backgroundImage = widget.backgroundImage ?? 'assets/images/img0.webp';
+    if (widget.backgroundImage == null) {
+      _loadTheme();
+    }
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final imagePath = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
+    if (mounted) {
+      setState(() {
+        _backgroundImage = imagePath;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Şafak Sözleri'),
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
+    final bool isDefaultBg = _backgroundImage == 'assets/images/img0.webp';
+    final Color textColor = isDefaultBg ? Colors.black87 : Colors.white;
+
+    return Container(
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage(_backgroundImage),
+          fit: BoxFit.cover,
+        ),
       ),
-      body: ListView.builder(
-        itemCount: cardData.length,
-        itemBuilder: (context, index) {
-          // Her bir kart için veri alma
-          final item = cardData[index];
-          return Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: CustomCardWidget(
-              imageUrl: item['imageUrl']!,
-              title: item['title']!,
-              index: index, // Her kartın sırasını veriyoruz
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          systemOverlayStyle: isDefaultBg
+              ? SystemUiOverlayStyle.dark
+              : SystemUiOverlayStyle.light,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: textColor,
             ),
-          );
-        },
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Şafak Sözleri',
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        body: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          itemCount: SafakSozleri.cardData.length,
+          itemBuilder: (context, index) {
+            final item = SafakSozleri.cardData[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: CustomCardWidget(
+                imageUrl: item['imageUrl']!,
+                title: item['title']!,
+                index: index,
+                totalCount: SafakSozleri.cardData.length,
+                isDefaultBg: isDefaultBg,
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 }
 
-// Kıvrımlı köşeyi oluşturmak için CustomClipper sınıfı
-class CurvedCornerClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    var path = Path();
-    path.moveTo(0, 0);
-    path.lineTo(size.width - 20, 0);
-    path.quadraticBezierTo(
-        size.width, 0, size.width, 20); // Sağ üst köşe kıvrımı
-    path.lineTo(size.width, size.height);
-    path.lineTo(0, size.height - 20);
-    path.quadraticBezierTo(0, size.height, 20, size.height); // Alt köşe kıvrımı
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
-}
-
 class CustomCardWidget extends StatelessWidget {
   final String imageUrl;
   final String title;
-  final int index; // Liste sırası için yeni parametre
+  final int index;
+  final int totalCount;
+  final bool isDefaultBg;
 
   const CustomCardWidget({
+    super.key,
     required this.imageUrl,
     required this.title,
     required this.index,
+    required this.totalCount,
+    required this.isDefaultBg,
   });
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required Color backgroundColor,
+    required Color iconColor,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: iconColor.withValues(alpha: 0.08),
+              width: 1,
+            ),
+          ),
+          child: Icon(icon, size: 18, color: iconColor),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          elevation: 5,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-                child: Image.asset(
-                  imageUrl,
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
+    final Color cardColor = isDefaultBg
+        ? Colors.white.withValues(alpha: 0.85)
+        : Colors.black.withValues(alpha: 0.45);
+    final Color borderColor = isDefaultBg
+        ? Colors.grey.shade300.withValues(alpha: 0.8)
+        : Colors.white.withValues(alpha: 0.15);
+    final Color textColor = isDefaultBg ? Colors.black87 : Colors.white;
+    final Color subtitleColor = isDefaultBg ? Colors.black54 : Colors.white70;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: borderColor, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDefaultBg ? 0.03 : 0.15),
+                blurRadius: 16,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
-        ),
-        // Kıvrımlı arka planı ve sayıyı sağ üst köşeye ekleme
-        Positioned(
-          top: 0,
-          right: 0,
-          child: ClipPath(
-            clipper:
-                CurvedCornerClipper(), // Kıvrımlı arka planı oluşturmak için
-            child: Container(
-              width: 80,
-              height: 80,
-              color: Colors.red,
-              child: Center(
-                child: Text(
-                  (index + 1)
-                      .toString(), // Liste sırasını 1'den başlatarak göster
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Soft framed image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    imageUrl,
+                    width: double.infinity,
+                    height: 180,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 180,
+                        color: isDefaultBg
+                            ? Colors.grey.shade200
+                            : Colors.white.withValues(alpha: 0.05),
+                        child: Icon(
+                          Icons.image_not_supported_rounded,
+                          color: subtitleColor,
+                          size: 32,
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
+                const SizedBox(height: 16),
+                // Quote text with quotation icon
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.format_quote_rounded,
+                        color: Colors.redAccent.withValues(alpha: 0.8),
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                            height: 1.45,
+                            letterSpacing: 0.15,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Divider(
+                  color: isDefaultBg
+                      ? Colors.black.withValues(alpha: 0.06)
+                      : Colors.white.withValues(alpha: 0.08),
+                  height: 1,
+                  thickness: 1,
+                ),
+                const SizedBox(height: 12),
+                // Actions and Index
+                Row(
+                  children: [
+                    _buildActionButton(
+                      icon: Icons.copy_rounded,
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: title));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                const SizedBox(width: 8),
+                                const Text('Söz panoya kopyalandı!'),
+                              ],
+                            ),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.green.shade600,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      backgroundColor: isDefaultBg
+                          ? Colors.black.withValues(alpha: 0.03)
+                          : Colors.white.withValues(alpha: 0.06),
+                      iconColor: subtitleColor,
+                    ),
+                    const SizedBox(width: 8),
+                    _buildActionButton(
+                      icon: Icons.share_rounded,
+                      onTap: () {
+                        final box = context.findRenderObject() as RenderBox?;
+                        Rect? sharePositionOrigin;
+                        if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+                          sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
+                        } else {
+                          final double screenWidth = MediaQuery.sizeOf(context).width;
+                          final double screenHeight = MediaQuery.sizeOf(context).height;
+                          sharePositionOrigin = Rect.fromLTWH(
+                            screenWidth / 2 - 10,
+                            screenHeight / 2 - 10,
+                            20,
+                            20,
+                          );
+                        }
+                        Share.share(title, sharePositionOrigin: sharePositionOrigin);
+                      },
+                      backgroundColor: isDefaultBg
+                          ? Colors.black.withValues(alpha: 0.03)
+                          : Colors.white.withValues(alpha: 0.06),
+                      iconColor: subtitleColor,
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.redAccent,
+                            Colors.red.shade700,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.redAccent.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        '${index + 1} / $totalCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 }

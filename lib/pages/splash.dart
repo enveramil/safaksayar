@@ -88,7 +88,10 @@ class _SplashScreenState extends State<SplashScreen> {
       // Eğer veriler mevcutsa ana sayfaya yönlendir
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => ManagePages(backgroundImage: themeImage)),
+        MaterialPageRoute(
+          settings: const RouteSettings(name: 'ManagePages'),
+          builder: (context) => ManagePages(backgroundImage: themeImage),
+        ),
       );
       // Reklam göster
       _loadInterstitialAd(); // Reklamı yükle
@@ -96,7 +99,10 @@ class _SplashScreenState extends State<SplashScreen> {
       // Eğer veri yoksa kullanıcıyı veri giriş sayfasına yönlendir
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => UserInputPage()),
+        MaterialPageRoute(
+          settings: const RouteSettings(name: 'UserInputPage'),
+          builder: (context) => UserInputPage(),
+        ),
       );
     }
   }

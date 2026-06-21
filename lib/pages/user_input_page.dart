@@ -247,8 +247,9 @@ class _UserInputPageState extends State<UserInputPage> {
   }
 
   /// Özel sayfa geçişi için fonksiyon
-  PageRouteBuilder _customPageRoute(Widget page) {
+  PageRouteBuilder _customPageRoute(Widget page, String pageName) {
     return PageRouteBuilder(
+      settings: RouteSettings(name: pageName),
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         const begin = Offset(1.0, 0.0); // Sağdan sola başlasın
@@ -467,7 +468,7 @@ class _UserInputPageState extends State<UserInputPage> {
 
         // Ana sayfaya yönlendir
         await Navigator.of(context).pushAndRemoveUntil(
-          _customPageRoute(ManagePages(backgroundImage: themeImage)),
+          _customPageRoute(ManagePages(backgroundImage: themeImage), 'ManagePages'),
           (Route<dynamic> route) => false,
         );
       }

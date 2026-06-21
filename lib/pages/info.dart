@@ -150,7 +150,10 @@ class _InfoScreenState extends State<InfoScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const FaqPage()),
+                      MaterialPageRoute(
+                        settings: const RouteSettings(name: 'FaqPage'),
+                        builder: (context) => const FaqPage(),
+                      ),
                     );
                   },
                 ),
@@ -162,7 +165,10 @@ class _InfoScreenState extends State<InfoScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const RankPage()),
+                      MaterialPageRoute(
+                        settings: const RouteSettings(name: 'RankPage'),
+                        builder: (context) => const RankPage(),
+                      ),
                     );
                   },
                 ),
@@ -174,7 +180,10 @@ class _InfoScreenState extends State<InfoScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const QuizPage()),
+                      MaterialPageRoute(
+                        settings: const RouteSettings(name: 'QuizPage'),
+                        builder: (context) => const QuizPage(),
+                      ),
                     );
                     AdManager().loadInterstitialAd();
                   },
@@ -188,6 +197,7 @@ class _InfoScreenState extends State<InfoScreen> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
+                        settings: const RouteSettings(name: 'NotesScreen'),
                         builder: (context) => NotesScreen(context: context),
                       ),
                     );
@@ -201,7 +211,10 @@ class _InfoScreenState extends State<InfoScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => IllerPlakaScreen()),
+                      MaterialPageRoute(
+                        settings: const RouteSettings(name: 'IllerPlakaScreen'),
+                        builder: (context) => IllerPlakaScreen(),
+                      ),
                     );
                   },
                 ),
@@ -213,25 +226,44 @@ class _InfoScreenState extends State<InfoScreen> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const SafakSozleri()),
+                      MaterialPageRoute(
+                        settings: const RouteSettings(name: 'SafakSozleri'),
+                        builder: (context) => SafakSozleri(
+                          backgroundImage: widget.backgroundImage,
+                        ),
+                      ),
                     );
                   },
                 ),
-                _buildInfoTile(
-                  title: 'Uygulamayı Paylaşın',
-                  subtitle: 'Askerlik görevini yerine getirecek arkadaşlarınızla ve devrelerinizle uygulamayı paylaşmayı unutmayın',
-                  imagePath: 'assets/images/share.webp',
-                  accentColor: Colors.teal,
-                  onTap: () {
-                    final String shareLink = Platform.isIOS
-                        ? 'https://apps.apple.com/app/id6777999683'
-                        : 'https://play.google.com/store/apps/details?id=com.bayesa.safaksayar';
-                    final box = context.findRenderObject() as RenderBox?;
-                    final Rect? sharePositionOrigin = box != null
-                        ? box.localToGlobal(Offset.zero) & box.size
-                        : null;
-                    Share.share(shareLink, sharePositionOrigin: sharePositionOrigin);
-                  },
+                Builder(
+                  builder: (tileContext) {
+                    return _buildInfoTile(
+                      title: 'Uygulamayı Paylaşın',
+                      subtitle: 'Askerlik görevini yerine getirecek arkadaşlarınızla ve devrelerinizle uygulamayı paylaşmayı unutmayın',
+                      imagePath: 'assets/images/share.webp',
+                      accentColor: Colors.teal,
+                      onTap: () {
+                        final String shareLink = Platform.isIOS
+                            ? 'https://apps.apple.com/app/id6777999683'
+                            : 'https://play.google.com/store/apps/details?id=com.bayesa.safaksayar';
+                        final box = tileContext.findRenderObject() as RenderBox?;
+                        Rect? sharePositionOrigin;
+                        if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+                          sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
+                        } else {
+                          final double screenWidth = MediaQuery.sizeOf(tileContext).width;
+                          final double screenHeight = MediaQuery.sizeOf(tileContext).height;
+                          sharePositionOrigin = Rect.fromLTWH(
+                            screenWidth / 2 - 10,
+                            screenHeight / 2 - 10,
+                            20,
+                            20,
+                          );
+                        }
+                        Share.share(shareLink, sharePositionOrigin: sharePositionOrigin);
+                      },
+                    );
+                  }
                 ),
                 const SizedBox(height: 80),
               ],

@@ -23,7 +23,10 @@ class _ThemePageState extends State<ThemePage> {
     // SplashScreen'e yönlendir ve önceki sayfaları temizle
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => SplashScreen()),
+      MaterialPageRoute(
+        settings: const RouteSettings(name: 'SplashScreen'),
+        builder: (context) => SplashScreen(),
+      ),
       (route) => false, // Tüm rotaları sil
     );
   }

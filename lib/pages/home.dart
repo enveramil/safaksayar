@@ -8,6 +8,8 @@ import 'package:safaksayar/ads/ad_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:home_widget/home_widget.dart';
+import 'package:safaksayar/pages/safak_cizelgesi_page.dart';
+import 'package:safaksayar/pages/ani_defteri_page.dart';
 
 class HomeScreen extends StatefulWidget {
   final String backgroundImage;
@@ -54,6 +56,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String displayedInfo = '';
   String displayGununSozu = '';
+  int _currentInfoIndex = 0;
+  late Future<Map<String, String?>> _profileDataFuture;
 
   String? sulusTarihi;
   String? terhisTarihi;
@@ -89,7 +93,82 @@ class _HomeScreenState extends State<HomeScreen> {
     "Ahtapotların üç kalbi ve mavi kanı vardır. Ayrıca beyinleri kollarının arasına dağılmıştır.",
     "Kelebekler tat alma duyularını ayaklarında bulunan özel alıcılar sayesinde hissederler.",
     "Bir salyangoz hiçbir zarar görmeden bir jiletin keskin kenarı üzerinde sürünebilir, çünkü vücudu koruyucu kalın bir mukus üretir.",
-    "Mona Lisa tablosunun kaşları yoktur. O dönemde kadınların kaşlarını tamamen tıraş etmesi modaydı."
+    "Mona Lisa tablosunun kaşları yoktur. O dönemde kadınların kaşlarını tamamen tıraş etmesi modaydı.",
+    "Muzlar hafifçe radyoaktiftir çünkü yüksek oranda potasyum içerirler, ancak sağlığa herhangi bir zararı yoktur.",
+    "Dünyanın en uzun trafik sıkışıklığı 2010 yılında Çin'in Pekin kentinde yaşandı ve tam 12 gün sürdü, araçlar günde sadece 1 km ilerleyebildi.",
+    "Kargalar, kendilerine haksızlık yapan ya da zarar veren insanların yüzlerini unutmazlar ve bunu diğer kargalara da öğretebilirler.",
+    "Güneş sistemindeki en yüksek yanardağ, Mars'ta bulunan ve yüksekliği yaklaşık 22 kilometre olan Olympus Mons'tur.",
+    "İnsan vücudundaki en güçlü kas, çene kası olan çiğneme (masseter) kasıdır.",
+    "Gökyüzündeki yıldızların sayısı, dünyadaki tüm plajlardaki kum tanelerinin sayısından daha fazladır.",
+    "Arılar, birbirleriyle iletişim kurmak ve çiçeklerin yerini tarif etmek için özel bir dans yaparlar.",
+    "Denizatı, ömür boyu tek eşli yaşayan tek balık türüdür ve yavruları erkek denizatı taşır.",
+    "Bir bulutun ağırlığı ortalama 500 ton civarındadır, bu da yaklaşık 100 filin ağırlığına eşittir.",
+    "Flamingolar sadece kafaları baş alkali durduğunda yemek yiyebilirler.",
+    "Dünya üzerindeki tüm karıncaların toplam ağırlığı, tüm insanların toplam ağırlığına yaklaşık olarak eşittir.",
+    "İnternet üzerindeki ilk alan adı (domain) 'symbolics.com'dur ve 15 Mart 1985'te tescil edilmiştir.",
+    "Bukalemunların dilleri, kendi vücut uzunluklarının yaklaşık iki katı kadar uzayabilir.",
+    "İnsan gözü yaklaşık 10 milyon farklı renk tonunu ayırt edebilir.",
+    "Ketçap, 1830'lu yıllarda Amerika'da ilaç olarak satılıyordu ve ishal ile hazımsızlığa iyi geldiği iddia ediliyordu.",
+    "Dünyadaki tatlı suyun yaklaşık %70'i kutuplardaki buzullarda donmuş halde bulunmaktadır.",
+    "Bir salyangoz hiç durmadan ve uyanmadan 3 yıl boyunca uyuyabilir.",
+    "Japonya'da her yıl meydana gelen deprem sayısı ortalama 1.500 civarındadır.",
+    "İnsanlar ve muzlar, DNA'larının yaklaşık %50'sini paylaşırlar.",
+    "Gözlerimizi kırptığımızda, gün boyunca yaklaşık 30 dakika karanlıkta kalmış oluruz.",
+    "İskambil kartlarındaki kupa papazı, bıyığı olmayan tek papazdır.",
+    "Bir su bardağı dolusu suyun içindeki atom sayısı, dünyadaki tüm okyanuslardaki su bardağı dolusu su sayısından fazladır.",
+    "Dünyanın en soğuk yeri olan Antarktika'da hiçbir sürüngen veya amfibi türü yaşamaz.",
+    "Güneş, dünyadaki tüm kum tanelerinden daha fazla sayıda atom içerir.",
+    "İnsan DNA'sı ile şempanze DNA'sı yaklaşık %98,8 oranında aynıdır.",
+    "Gökyüzündeki bulutlar beyazdır çünkü güneş ışığını oluşturan tüm renkleri eşit şekilde yansıtırlar.",
+    "Bir insanın yaşamı boyunca ürettiği tükürük miktarı, yaklaşık iki yüzme havuzunu doldurabilir.",
+    "Köpeklerin burun izleri, insanların parmak izleri gibi benzersizdir ve kimlik tespitinde kullanılabilir.",
+    "Bir sinekkuşu, havada asılı kalabilen ve geriye doğru uçabilen tek kuş türüdür.",
+    "Satürn gezegeni sudan daha az yoğundur; eğer devasa bir okyanusa koyulabilseydi, suyun üzerinde yüzerdi.",
+    "Dünya tarihindeki en büyük deprem, 1960 yılında Şili'de meydana gelen 9.5 büyüklüğündeki depremdir.",
+    "Kar taneleri altı köşelidir çünkü su molekülleri donarken altıgen kristal yapılar oluşturur.",
+    "Kivi meyvesi, ismini Yeni Zelanda'nın uçamayan milli kuşu olan kivi kuşundan almıştır.",
+    "İnternetteki verilerin %90'ı sadece son iki yıl içinde üretilmiştir.",
+    "Ahtapotların kolları kesildiğinde yeniden büyüyebilir ve bu kollarda bağımsız küçük beyinler bulunur.",
+    "Dünya'nın çekirdeğindeki altın miktarı, tüm gezegenin yüzeyini 1,5 metre kalınlığında kaplayacak kadardır.",
+    "Kelebekler, sıvı gıdaları tüketmek için pipete benzeyen hortum şeklinde bir ağıza sahiptirler.",
+    "Venüs günü, Venüs yılından daha uzundur; yani kendi etrafında dönmesi, Güneş etrafında dönmesinden uzun sürer.",
+    "İnsan beyni, uyanıkken küçük bir ampulü yakmaya yetecek kadar elektrik üretebilir.",
+    "Dünyadaki en büyük çöl Sahra değil, Antarktika Kutup Çölü'dür; çünkü çöller yağış miktarına göre belirlenir.",
+    "Timsahlar dillerini ağızlarının dışına çıkaramazlar çünkü dilleri ağız tabanına sabittir.",
+    "Su, donduğunda hacmi genişleyen ender maddelerden biridir; bu yüzden buz suyun üstünde yüzer.",
+    "Zürafaların ses telleri yoktur, bu yüzden birbirleriyle düşük frekanslı sesler veya homurtularla iletişim kurarlar.",
+    "Sıcak su, belirli koşullar altında soğuk sudan daha hızlı donabilir; buna Mpemba etkisi denir.",
+    "Kediler, hayatlarının yaklaşık üçte ikisini uyuyarak geçirirler.",
+    "Dünya üzerindeki en eski ağaç, İsveç'te bulunan ve yaklaşık 9.500 yaşında olan bir çam ağacıdır.",
+    "İnsanlar esnediğinde kulaklarındaki geçici tıkanıklık, östaki borusunun açılıp kapanmasından kaynaklanır.",
+    "Kutup ışıkları (Aurora), Güneş'ten gelen yüklü parçacıkların Dünya'nın atmosferindeki gazlarla çarpışmasıyla oluşur.",
+    "İlk bilgisayar faresi 1964 yılında Douglas Engelbart tarafından ahşaptan yapılmıştır.",
+    "Köpekbalıkları dünyada dinozorlardan daha uzun süredir varlığını sürdmektedir.",
+    "Dünyanın en küçük ülkesi, Roma şehrinin içinde yer alan ve yüzölçümü sadece 0.44 km² olan Vatikan'dır.",
+    "Ay'daki ayak izleri, orada rüzgar veya su olmadığı için milyonlarca yıl boyunca bozulmadan kalacaktır.",
+    "Papatya çayı, sinir sistemini yatıştırarak uykuya geçişi kolaylaştıran doğal bileşenler içerir.",
+    "Eiffel Kulesi, yaz aylarında metalin genleşmesi nedeniyle yaklaşık 15 santimetre daha uzun olabilir.",
+    "Karıncalar uyumazlar; gün boyunca kısa süreli güç şekerlemeleri yaparak dinlenirler.",
+    "Denizanalarının %95'i sudan oluşur, beyinleri, kalpleri ve kemikleri yoktur.",
+    "Dünya yüzeyinin yaklaşık %71'i suyla kaplıdır, ancak bu suyun sadece %2,5'i tatlı sudur.",
+    "Koalalar, günün yaklaşık 20 ila 22 saatini dinlenerek ve uyuyarak geçirirler.",
+    "İnsan vücudundaki kemiklerin dörtte biri ayaklarda bulunur.",
+    "Işık, saniyede yaklaşık 300.000 kilometre hızla hareket eder; bu hızla Dünya'nın etrafını bir saniyede 7.5 kez dönebilir.",
+    "Dünyanın en yüksek şelalesi, Venezuela'da bulunan ve yüksekliği 979 metre olan Angel Şelalesi'dir.",
+    "Kaju fıstığı aslında kaju elması adı verilen bir meyvenin altında yetişen tek bir tohumdur.",
+    "İnsan kalbi, günde ortalama 100.000 kez atar ve vücuda kan pompalar.",
+    "Yunuslar, olası tehlikelere karşı tetikte kalabilmek için bir gözleri açık uyurlar.",
+    "Dünya üzerindeki tüm altınların sadece %1'i kadarı bugüne kadar madenlerden çıkarılabilmiştir.",
+    "İnsan burnu, yaklaşık bir trilyon farklı kokuyu ayırt etme yeteneğine sahiptir.",
+    "Jüpiter o kadar büyüktür ki, Güneş sistemindeki diğer tüm gezegenler onun içine rahatça sığabilir.",
+    "Kutup ayıları beyaz görünmelerine rağmen aslında şeffaf tüylere ve tamamen siyah bir deriye sahiptirler.",
+    "Bir çay kaşığı nötron yıldızı maddesi, yaklaşık 6 milyar ton ağırlığındadır.",
+    "Ketçap, 1830'lu yıllarda Amerika'da ilaç olarak satılıyordu ve ishal ile hazımsızlığa iyi geldiği iddia ediliyordu.",
+    "Dünyadaki tatlı suyun yaklaşık %70'i kutuplardaki buzullarda donmuş halde bulunmaktadır.",
+    "Bir salyangoz hiç durmadan ve uyanmadan 3 yıl boyunca uyuyabilir.",
+    "Japonya'da her yıl meydana gelen deprem sayısı ortalama 1.500 civarındadır.",
+    "İnsanlar ve muzlar, DNA'larının yaklaşık %50'sini paylaşırlar.",
+    "Gözlerimizi kırptığımızda, gün boyunca yaklaşık 30 dakika karanlıkta kalmış oluruz."
   ];
 
   List<String> askeriSozler = [
@@ -250,6 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _profileDataFuture = _loadData();
     loadCountdown();
     _loadAppOpenAd(); // Load the app open ad when the app starts
     pickRandomInfo(); // Pick random info when the app starts
@@ -267,11 +347,30 @@ class _HomeScreenState extends State<HomeScreen> {
     // Check if infoList is not empty to prevent null value
     if (infoList.isNotEmpty) {
       setState(() {
-        displayedInfo = infoList[random.nextInt(infoList.length)];
+        _currentInfoIndex = random.nextInt(infoList.length);
+        displayedInfo = infoList[_currentInfoIndex];
       });
     } else {
       setState(() {
         displayedInfo = 'Bilgi bulunamadı'; // Fallback if list is empty
+      });
+    }
+  }
+
+  void _nextInfo() {
+    if (infoList.isNotEmpty) {
+      setState(() {
+        _currentInfoIndex = (_currentInfoIndex + 1) % infoList.length;
+        displayedInfo = infoList[_currentInfoIndex];
+      });
+    }
+  }
+
+  void _prevInfo() {
+    if (infoList.isNotEmpty) {
+      setState(() {
+        _currentInfoIndex = (_currentInfoIndex - 1 + infoList.length) % infoList.length;
+        displayedInfo = infoList[_currentInfoIndex];
       });
     }
   }
@@ -494,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return SingleChildScrollView(
       child: Center(
         child: FutureBuilder<Map<String, String?>>(
-          future: _loadData(),
+          future: _profileDataFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -566,6 +665,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     // Dynamic Sliding Gradient Progress Bar
                     buildProgressBar(),
+
+                    const SizedBox(height: 4),
+                    buildAniDefteriCard(),
+
+                    if (durationMonths == 6) ...[
+                      const SizedBox(height: 4),
+                      buildSafakCizelgesiButton(),
+                    ],
 
                     const SizedBox(height: 4),
 
@@ -1040,6 +1147,108 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget buildAniDefteriCard() {
+    final bool isCompleted = remainingDuration <= Duration.zero;
+    final bool isDark = !_isDefaultTheme;
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: isCompleted
+            ? (isDark ? const Color(0xFF1E293B) : Colors.green.shade50.withValues(alpha: 0.8))
+            : _getCardColor(),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isCompleted
+              ? (isDark ? Colors.greenAccent.withValues(alpha: 0.4) : Colors.green.shade300)
+              : _getBorderColor(),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: isCompleted
+                ? Colors.green.withValues(alpha: isDark ? 0.1 : 0.05)
+                : Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const AniDefteriPage(),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isCompleted
+                        ? (isDark ? Colors.greenAccent.withValues(alpha: 0.15) : Colors.green.shade100)
+                        : (isDark ? Colors.blueAccent.withValues(alpha: 0.1) : Colors.blue.shade50),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isCompleted ? Icons.auto_stories_rounded : Icons.auto_stories_outlined,
+                    color: isCompleted
+                        ? (isDark ? Colors.greenAccent : Colors.green.shade700)
+                        : (isDark ? Colors.blueAccent : Colors.blueAccent.shade700),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isCompleted ? "Terhis Anı Defterin Hazır! 🫡" : "Terhis Anı Defteri (Ön İzleme)",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isCompleted
+                              ? (isDark ? Colors.greenAccent : Colors.green.shade900)
+                              : _getTextColor(),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isCompleted
+                            ? "Askerlik yolculuğunun anılarını ve istatistiklerini hemen incele!"
+                            : "Askerlik boyunca biriktirdiğin anıları ve istatistikleri ön izle!",
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _getSubtitleColor(),
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: isCompleted
+                      ? (isDark ? Colors.greenAccent : Colors.green.shade700)
+                      : (isDark ? Colors.blueAccent : Colors.blueAccent.shade700),
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget buildUserInfoPanel(Map<String, String?> data) {
     final String formattedSulus = data['sulusTarihi'] != null
         ? DateFormat('dd.MM.yyyy').format(DateTime.parse(data['sulusTarihi']!))
@@ -1198,6 +1407,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       selectedDays[d] == true);
                 },
                 onDaySelected: (selectedDay, _) {
+                  final today = DateTime.now();
+                  final todayNormalized = DateTime(today.year, today.month, today.day);
+                  final selectedDayNormalized = DateTime(selectedDay.year, selectedDay.month, selectedDay.day);
+
+                  if (selectedDayNormalized.isAfter(todayNormalized)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('İleri tarihteki günleri işaretleyemezsiniz.'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                    return;
+                  }
+
                   _selectedDaysNotifier.value = {
                     ...selectedDays,
                     selectedDay: !(selectedDays[selectedDay] ?? false),
@@ -1291,8 +1514,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget buildShortInfoContainer() {
+    final Color arrowColor = _isDefaultTheme ? Colors.orange.shade700 : Colors.amber;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: _getCardColor(),
@@ -1327,15 +1552,50 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 6),
           Divider(color: _getBorderColor(), thickness: 0.8),
-          const SizedBox(height: 10),
-          Text(
-            displayedInfo,
-            style: TextStyle(
-              fontSize: 15,
-              color: _getTextColor(),
-              height: 1.45,
-            ),
-            textAlign: TextAlign.center,
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              IconButton(
+                onPressed: _prevInfo,
+                icon: Icon(Icons.arrow_back_ios_rounded, color: arrowColor, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        displayedInfo,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          color: _getTextColor(),
+                          height: 1.45,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${_currentInfoIndex + 1} / ${infoList.length}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _getSubtitleColor().withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: _nextInfo,
+                icon: Icon(Icons.arrow_forward_ios_rounded, color: arrowColor, size: 18),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
           ),
         ],
       ),
@@ -1555,6 +1815,100 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget buildSafakCizelgesiButton() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: _getCardColor(),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _getBorderColor(), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: _isDefaultTheme ? 0.04 : 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(24),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                settings: const RouteSettings(name: 'SafakCizelgesiPage'),
+                builder: (context) => SafakCizelgesiPage(
+                  backgroundImage: widget.backgroundImage,
+                ),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _isDefaultTheme 
+                        ? Colors.pinkAccent.withValues(alpha: 0.1) 
+                        : Colors.white.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _isDefaultTheme 
+                          ? Colors.pinkAccent.withValues(alpha: 0.3) 
+                          : Colors.white.withValues(alpha: 0.12),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.palette_rounded,
+                    color: _isDefaultTheme ? Colors.pinkAccent : Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "ŞAFAK ÇİZELGESİ (SEVGİ TAKVİMİ)",
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _isDefaultTheme ? Colors.pinkAccent.shade700 : Colors.white,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        "Her gününü dilediğin renkle boyayarak şafağını tamamla",
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: _getSubtitleColor(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: _getSubtitleColor().withValues(alpha: 0.6),
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

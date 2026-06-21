@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:safaksayar/ads/ad_manager.dart';
 import 'package:safaksayar/pages/theme_page.dart';
 import 'package:safaksayar/pages/user_input_page.dart';
+import 'package:safaksayar/pages/ani_defteri_page.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -78,6 +79,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return '${parsed.day.toString().padLeft(2, '0')}.${parsed.month.toString().padLeft(2, '0')}.${parsed.year}';
     } catch (_) {
       return dateStr;
+    }
+  }
+
+  bool _isDischarged() {
+    if (_terhisTarihi.isEmpty) return false;
+    try {
+      final terhis = DateTime.parse(_terhisTarihi);
+      return DateTime.now().isAfter(terhis);
+    } catch (_) {
+      return false;
     }
   }
 
@@ -339,7 +350,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Bilgileri Güncelle',
               iconColor: Colors.blue,
               onTap: () async {
-                await Navigator.of(context).push(_customPageRoute(UserInputPage()));
+                await Navigator.of(context).push(_customPageRoute(UserInputPage(), 'UserInputPage'));
                 _loadProfileData();
               },
             ),
@@ -348,27 +359,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
               title: 'Arka Plan Değiştir',
               iconColor: Colors.purple,
               onTap: () async {
-                await Navigator.of(context).push(_customPageRoute(ThemePage()));
+                await Navigator.of(context).push(_customPageRoute(ThemePage(), 'ThemePage'));
                 _loadProfileData();
                 AdManager().loadInterstitialAd();
+              },
+            ),
+            _buildListTile(
+              icon: Icons.auto_stories_rounded,
+              title: _isDischarged() ? 'Terhis Anı Defteri' : 'Terhis Anı Defteri (Ön İzleme)',
+              iconColor: _isDischarged() ? Colors.green : Colors.blueGrey,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AniDefteriPage(),
+                  ),
+                );
               },
             ),
 
 
             _buildSectionHeader('Uygulama & Destek'),
-            _buildListTile(
-              icon: Icons.share_outlined,
-              title: 'Uygulamayı Paylaş',
-              iconColor: Colors.green,
-              onTap: () {
-                final String shareLink = Platform.isIOS
-                    ? 'https://apps.apple.com/app/id6777999683'
-                    : 'https://play.google.com/store/apps/details?id=com.bayesa.safaksayar';
-                final box = context.findRenderObject() as RenderBox?;
-                final Rect? sharePositionOrigin = box != null
-                    ? box.localToGlobal(Offset.zero) & box.size
-                    : null;
-                Share.share(shareLink, sharePositionOrigin: sharePositionOrigin);
+            Builder(
+              builder: (tileContext) {
+                return _buildListTile(
+                  icon: Icons.share_outlined,
+                  title: 'Uygulamayı Paylaş',
+                  iconColor: Colors.green,
+                  onTap: () {
+                    final String shareLink = Platform.isIOS
+                        ? 'https://apps.apple.com/app/id6777999683'
+                        : 'https://play.google.com/store/apps/details?id=com.bayesa.safaksayar';
+                    final box = tileContext.findRenderObject() as RenderBox?;
+                    Rect? sharePositionOrigin;
+                    if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+                      sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
+                    } else {
+                      final double screenWidth = MediaQuery.sizeOf(tileContext).width;
+                      final double screenHeight = MediaQuery.sizeOf(tileContext).height;
+                      sharePositionOrigin = Rect.fromLTWH(
+                        screenWidth / 2 - 10,
+                        screenHeight / 2 - 10,
+                        20,
+                        20,
+                      );
+                    }
+                    Share.share(shareLink, sharePositionOrigin: sharePositionOrigin);
+                  },
+                );
               },
             ),
             _buildListTile(
@@ -566,7 +603,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         // Redirect to UserInputPage (information entry screen)
         await Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const UserInputPage()),
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'UserInputPage'),
+            builder: (context) => const UserInputPage(),
+          ),
           (Route<dynamic> route) => false,
         );
       }
@@ -586,8 +626,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   /// Özel sayfa geçişi için fonksiyon
-  PageRouteBuilder _customPageRoute(Widget page) {
+  PageRouteBuilder _customPageRoute(Widget page, String pageName) {
     return PageRouteBuilder(
+      settings: RouteSettings(name: pageName),
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
         const begin = Offset(1.0, 0.0); // Sağdan sola başlasın
