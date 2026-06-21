@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:safaksayar/pages/home.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../Services/notification_service.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
 
+/// Bu sayfa artık profile.dart üzerinden erişilmiyor.
+/// Geriye dönük uyumluluk için korunmuştur.
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
 
@@ -15,93 +12,50 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  TimeOfDay? selectedTime;
-  String? savedDate;
-  NotificationService notificationService = NotificationService();
+  int _hour = 21;
+  int _minute = 0;
+  bool _loading = false;
 
   @override
   void initState() {
     super.initState();
-    loadSavedDate();
-    tz.initializeTimeZones();
-    notificationService.initNotification();
+    _load();
   }
 
-  Future<void> loadSavedDate() async {
+  Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      savedDate = prefs.getString('selected_date') ?? "Henüz tarih seçilmedi";
-      if (savedDate != "Henüz tarih seçilmedi") {
-        // Saat bilgisini ayır ve göster
-        selectedTime = TimeOfDay(
-          hour: int.parse(savedDate!.split(' ')[2].split(':')[0]),
-          minute: int.parse(savedDate!.split(' ')[2].split(':')[1]),
-        );
-      }
-    });
-  }
-
-  Future<void> cancelAllNotifications() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('selected_date'); // Kaydedilen tarihi temizle
-    setState(() {
-      savedDate = "Henüz tarih seçilmedi";
-      selectedTime = null; // Seçilen saati sıfırla
-    });
-    await notificationService.notificationsPlugin.cancelAll();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Tüm bildirimler iptal edildi ve ayarlar sıfırlandı")),
-    );
-  }
-
-
-  Future<void> saveSelectedDate(DateTime selectedDate) async {
-    final prefs = await SharedPreferences.getInstance();
-    String formattedDate = DateFormat('yyyy-MM-dd – kk:mm').format(selectedDate);
-    await prefs.setString('selected_date', formattedDate);
-    loadSavedDate();
-  }
-
-  Future<void> _selectTime(BuildContext context) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (picked != null && picked != selectedTime) {
+    if (mounted) {
       setState(() {
-        selectedTime = picked;
+        _hour = prefs.getInt('notif_hour') ?? 21;
+        _minute = prefs.getInt('notif_minute') ?? 0;
       });
-      final now = DateTime.now();
-      final selectedDateTime = DateTime(
-          now.year, now.month, now.day, picked.hour, picked.minute);
-      saveSelectedDate(selectedDateTime);
     }
   }
 
-  void _scheduleNotification() async {
-    if (selectedTime != null) {
-      final now = DateTime.now();
-      final selectedDateTime = DateTime(now.year, now.month, now.day,
-          selectedTime!.hour, selectedTime!.minute);
+  Future<void> _save() async {
+    setState(() => _loading = true);
+    await NotificationService().saveNotificationTime(_hour, _minute);
+    if (mounted) {
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ Bildirimler her gün ${_hour.toString().padLeft(2, '0')}:${_minute.toString().padLeft(2, '0')} için ayarlandı.',
+          ),
+          backgroundColor: Colors.deepOrange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
 
-      if (selectedDateTime.isAfter(now)) {
-        final tzDateTime = tz.TZDateTime.from(selectedDateTime, tz.local);
-        notificationService.scheduleNotification(
-          id: 1,
-          title: "Şafak Sayar - 2025",
-          body: "Kalan Şafak: ${remainingDuration.inDays} gün kaldı...",
-          scheduledNotificationDateTime: selectedDateTime,
-        );
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Bildirim ayarlandı")),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Seçilen saat geçmişte olamaz!")),
-        );
-        print(remainingDuration.inDays);
-      }
+  Future<void> _cancel() async {
+    await NotificationService().cancelAll();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tüm bildirimler iptal edildi.')),
+      );
     }
   }
 
@@ -109,113 +63,124 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Bildirim Ayarla"),
-        backgroundColor: Colors.deepPurple,
-        elevation: 0,
+        title: const Text('Bildirim Ayarları'),
+        backgroundColor: Colors.deepOrange,
+        foregroundColor: Colors.white,
       ),
-      body: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20.0),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.deepPurple, Colors.indigo],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              "Bildirim Ayarları",
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+            const SizedBox(height: 24),
+            Text(
+              'Bildirim Saati',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 30),
-            Card(
-              color: Colors.white.withValues(alpha: 0.1),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+            const SizedBox(height: 8),
+            Text(
+              'Her gün kalan askerlik gününü bu saatte hatırlatacağız.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 32),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _timeSpinner(
+                  label: 'Saat',
+                  value: _hour,
+                  onUp: () => setState(() => _hour = (_hour + 1) % 24),
+                  onDown: () => setState(() => _hour = (_hour - 1 + 24) % 24),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(':',
+                      style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
+                ),
+                _timeSpinner(
+                  label: 'Dakika',
+                  value: _minute,
+                  onUp: () => setState(() => _minute = (_minute + 1) % 60),
+                  onDown: () => setState(() => _minute = (_minute - 1 + 60) % 60),
+                ),
+              ],
+            ),
+            const SizedBox(height: 48),
+            ElevatedButton(
+              onPressed: _loading ? null : _save,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepOrange,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      savedDate != null ? "Kaydedilen Tarih: $savedDate" : "Yükleniyor...",
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
+              child: _loading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      selectedTime != null
-                          ? "Seçilen Saat: ${selectedTime!.format(context)}"
-                          : "Henüz bir saat seçilmedi",
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+                    )
+                  : const Text('Kaydet & Planla',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                backgroundColor: Colors.orangeAccent,
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _cancel,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                side: const BorderSide(color: Colors.red),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
+                    borderRadius: BorderRadius.circular(14)),
               ),
-              onPressed: () => _selectTime(context),
-              child: const Text(
-                "Saat Seç",
-                style: TextStyle(fontSize: 18, color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                backgroundColor: Colors.lightBlueAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              onPressed: _scheduleNotification,
-              child: const Text(
-                "Bildirim Planla",
-                style: TextStyle(fontSize: 18, color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50),
-                backgroundColor: Colors.redAccent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
-              onPressed: cancelAllNotifications,
-              child: const Text(
-                "Bildirimleri İptal Et",
-                style: TextStyle(fontSize: 18, color: Colors.white),
-              ),
+              child: const Text('Tüm Bildirimleri İptal Et',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _timeSpinner({
+    required String label,
+    required int value,
+    required VoidCallback onUp,
+    required VoidCallback onDown,
+  }) {
+    return Column(
+      children: [
+        Text(label,
+            style: const TextStyle(
+                fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+        const SizedBox(height: 4),
+        IconButton(
+            onPressed: onUp,
+            icon: const Icon(Icons.keyboard_arrow_up_rounded,
+                color: Colors.deepOrange, size: 30)),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, anim) =>
+              ScaleTransition(scale: anim, child: child),
+          child: Text(
+            value.toString().padLeft(2, '0'),
+            key: ValueKey(value),
+            style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+          ),
+        ),
+        IconButton(
+            onPressed: onDown,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                color: Colors.deepOrange, size: 30)),
+      ],
     );
   }
 }

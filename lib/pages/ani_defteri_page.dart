@@ -8,6 +8,9 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:confetti/confetti.dart';
 import 'package:safaksayar/Services/log_service.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
+import 'package:path_provider/path_provider.dart';
 
 class AniDefteriPage extends StatefulWidget {
   const AniDefteriPage({super.key});
@@ -19,6 +22,7 @@ class AniDefteriPage extends StatefulWidget {
 class _AniDefteriPageState extends State<AniDefteriPage> {
   final PageController _pageController = PageController();
   late ConfettiController _confettiController;
+  final GlobalKey _shareCardKey = GlobalKey();
   int _currentPage = 0;
   bool _isLoading = true;
   bool _isPreview = false;
@@ -164,7 +168,7 @@ class _AniDefteriPageState extends State<AniDefteriPage> {
     }
   }
 
-  void _shareJourney(BuildContext context) {
+  void _shareJourneyText(BuildContext context) {
     final sDate = _formatDateString(_sulusTarihi);
     final tDate = _formatDateString(_terhisTarihi);
     
@@ -178,7 +182,7 @@ Askerlik şerefli görevime devam ediyorum! Bu süreçte Şafak Sayar uygulamas�
 📍 Görev Yeri: $_askerlikYeri
 📅 Sülüs Tarihi: $sDate
 📅 Terhis Tarihi: $tDate
-📝 Şu Ana Kadar Kaydedilen Anı/Not: ${_notes.length} adet
+📝 Şu Ama Kadar Kaydedilen Anı/Not: ${_notes.length} adet
 ⏱️ Uygulamada Geçen Vakit: ${_formatDuration(_totalDurationSeconds)}
 🎯 Toplam Kontrol & Clicks: $_totalClicks kez
 
@@ -215,6 +219,90 @@ Bizimle bu kutlu yolda yürüyen herkese teşekkürler! Vatan Sağ Olsun! 🇹�
       );
     }
     Share.share(shareText, sharePositionOrigin: sharePositionOrigin);
+  }
+
+  Future<void> _shareJourney(BuildContext context) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) {
+          return const Center(
+            child: Card(
+              color: Color(0xFF131A26),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: Colors.white),
+                    SizedBox(width: 16),
+                    Text(
+                      'Paylaşım görseli hazırlanıyor...',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+
+      // Give frame a brief moment to render (just in case)
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final boundary = _shareCardKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) {
+        throw Exception('RenderRepaintBoundary not found');
+      }
+
+      final ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      final ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        throw Exception('Could not convert image to bytes');
+      }
+      final Uint8List pngBytes = byteData.buffer.asUint8List();
+
+      final tempDir = await getTemporaryDirectory();
+      final file = File('${tempDir.path}/safak_gunlugu.png');
+      await file.writeAsBytes(pngBytes);
+
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      final box = context.findRenderObject() as RenderBox?;
+      Rect? sharePositionOrigin;
+      if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
+      } else {
+        final double screenWidth = MediaQuery.sizeOf(context).width;
+        final double screenHeight = MediaQuery.sizeOf(context).height;
+        sharePositionOrigin = Rect.fromLTWH(
+          screenWidth / 2 - 10,
+          screenHeight / 2 - 10,
+          20,
+          20,
+        );
+      }
+
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: _isPreview 
+            ? 'Vatan Borcu Ödeniyor! Şafak Sayar Günlüğüm 🇹🇷'
+            : 'Görev Tamamlandı! Şafak Bitti! 🇹🇷',
+        sharePositionOrigin: sharePositionOrigin,
+      );
+    } catch (e) {
+      debugPrint('Error sharing memory card image: $e');
+      if (context.mounted) {
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {}
+      }
+      _shareJourneyText(context);
+    }
   }
 
   @override
@@ -814,79 +902,82 @@ Bizimle bu kutlu yolda yürüyen herkese teşekkürler! Vatan Sağ Olsun! 🇹�
       padding: const EdgeInsets.all(20.0),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [const Color(0xFF1B263B), _getPrimaryColor().withValues(alpha: 0.6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          RepaintBoundary(
+            key: _shareCardKey,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [const Color(0xFF1B263B), _getPrimaryColor()],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black45,
+                    blurRadius: 15,
+                    offset: Offset(0, 8),
+                  ),
+                ],
               ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: const [
-                BoxShadow(
-                  color: Colors.black45,
-                  blurRadius: 15,
-                  offset: Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Text(
-                  _isPreview ? '🇹🇷 ŞAFAK GÜNLÜĞÜ (ÖN İZLEME) 🫡' : '🇹🇷 GÖREV TAMAMLANDI 🫡',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    letterSpacing: 1.5,
+              child: Column(
+                children: [
+                  Text(
+                    _isPreview ? '🇹🇷 ŞAFAK GÜNLÜĞÜ (ÖN İZLEME) 🫡' : '🇹🇷 GÖREV TAMAMLANDI 🫡',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      letterSpacing: 1.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Image.asset(
-                  _getKuvvetBadgeAsset(),
-                  height: 60,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.check_circle_rounded, color: Colors.green, size: 60),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '${_name.toUpperCase()} ${_surname.toUpperCase()}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 16),
+                  Image.asset(
+                    _getKuvvetBadgeAsset(),
+                    height: 60,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.check_circle_rounded, color: Colors.green, size: 60),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Rütbe: ${_rutbe.toUpperCase()}',
-                  style: TextStyle(
-                    color: accentColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 16),
+                  Text(
+                    '${_name.toUpperCase()} ${_surname.toUpperCase()}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                const Divider(color: Colors.white24),
-                const SizedBox(height: 12),
-                
-                _buildShareSummaryRow('📅 Sülüs', sDate),
-                _buildShareSummaryRow('📅 Terhis', tDate),
-                _buildShareSummaryRow('📝 Yazılan Not', '${_notes.length} Adet'),
-                _buildShareSummaryRow('⏱️ Geçen Vakit', _formatDuration(_totalDurationSeconds)),
-                _buildShareSummaryRow('📍 Görev Yeri', _askerlikYeri),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Rütbe: ${_rutbe.toUpperCase()}',
+                    style: TextStyle(
+                      color: accentColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Divider(color: Colors.white24),
+                  const SizedBox(height: 12),
+                  
+                  _buildShareSummaryRow('📅 Sülüs', sDate),
+                  _buildShareSummaryRow('📅 Terhis', tDate),
+                  _buildShareSummaryRow('📝 Yazılan Not', '${_notes.length} Adet'),
+                  _buildShareSummaryRow('⏱️ Geçen Vakit', _formatDuration(_totalDurationSeconds)),
+                  _buildShareSummaryRow('📍 Görev Yeri', _askerlikYeri),
 
-                const SizedBox(height: 16),
-                Text(
-                  _isPreview ? '#ŞafakSavar #YolculukDevamEdiyor' : '#ŞafakBitti #TerhisOldum',
-                  style: const TextStyle(
-                    color: Colors.white30,
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic,
+                  const SizedBox(height: 16),
+                  Text(
+                    _isPreview ? '#ŞafakSavar #YolculukDevamEdiyor' : '#ŞafakBitti #TerhisOldum',
+                    style: const TextStyle(
+                      color: Colors.white30,
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),

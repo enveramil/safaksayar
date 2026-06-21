@@ -16,7 +16,8 @@ void main() async {
   MobileAds.instance.initialize();
   await Firebase.initializeApp();
   await AdManager.fetchAdConfig();
-  NotificationService().initNotification();
+  await NotificationService().init();
+  await NotificationService().requestPermissions();
   await LogService.instance.init();
   LogService.instance.onAppStart();
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(

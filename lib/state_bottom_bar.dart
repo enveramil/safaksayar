@@ -8,6 +8,7 @@ import 'package:safaksayar/pages/chat_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'Services/log_service.dart';
+import 'Services/notification_service.dart';
 
 class ManagePages extends StatefulWidget {
   final String? backgroundImage;
@@ -17,7 +18,7 @@ class ManagePages extends StatefulWidget {
   State<ManagePages> createState() => _ManagePagesState();
 }
 
-class _ManagePagesState extends State<ManagePages> {
+class _ManagePagesState extends State<ManagePages> with WidgetsBindingObserver {
   late String _backgroundImage; // Varsayılan arka plan
   int _currentIndex = 0;
   bool _showChat = false;
@@ -56,9 +57,26 @@ class _ManagePagesState extends State<ManagePages> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _backgroundImage = widget.backgroundImage ?? 'assets/images/img0.webp';
     _loadTheme();
     _listenToChatConfig();
+    // Her uygulama açılışında bildirimleri yenile
+    NotificationService().scheduleAllNotifications();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Uygulama arka plandan ön plana geldiğinde bildirimleri yenile
+      NotificationService().scheduleAllNotifications();
+    }
   }
 
   void _listenToChatConfig() {

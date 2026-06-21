@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:in_app_review/in_app_review.dart';
+import 'package:safaksayar/Services/notification_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String backgroundImage;
@@ -27,6 +28,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _memleket = '';
   String _sulusTarihi = '';
   String _terhisTarihi = '';
+  int _notifHour = 21;
+  int _notifMinute = 0;
 
   @override
   void initState() {
@@ -46,6 +49,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _memleket = prefs.getString('memleket') ?? '';
         _sulusTarihi = prefs.getString('sulus_tarihi') ?? '';
         _terhisTarihi = prefs.getString('end_date') ?? '';
+        _notifHour = prefs.getInt('notif_hour') ?? 21;
+        _notifMinute = prefs.getInt('notif_minute') ?? 0;
       });
     }
   }
@@ -364,6 +369,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 AdManager().loadInterstitialAd();
               },
             ),
+            _buildNotificationTimeTile(),
             _buildListTile(
               icon: Icons.auto_stories_rounded,
               title: _isDischarged() ? 'Terhis Anı Defteri' : 'Terhis Anı Defteri (Ön İzleme)',
@@ -644,12 +650,448 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ─── Bildirim Saati Tile & Picker ────────────────────────────────────────
+
+  Widget _buildNotificationTimeTile() {
+    final bool isDark = !_isDefaultTheme;
+    final String timeLabel =
+        '${_notifHour.toString().padLeft(2, '0')}:${_notifMinute.toString().padLeft(2, '0')}';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _showNotificationTimePicker,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+            decoration: BoxDecoration(
+              color: _getCardColor(),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _getBorderColor(), width: 1),
+              boxShadow: _isDefaultTheme
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : [],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.deepOrange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.notifications_active_outlined,
+                    size: 22,
+                    color: isDark ? Colors.white : Colors.deepOrange,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bildirim Saati',
+                        style: TextStyle(
+                          color: _getTextColor(),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Her gün $timeLabel\'de bildirim alırsın',
+                        style: TextStyle(
+                          color: _getSubtitleColor(),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : Colors.deepOrange.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Colors.deepOrange.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Text(
+                    timeLabel,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.deepOrange,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showNotificationTimePicker() {
+    final bool isDark = !_isDefaultTheme;
+    final Color modalBgColor = isDark ? const Color(0xFF0F172A) : Colors.white;
+    final Color textColor = isDark ? Colors.white : Colors.black87;
+
+    // Temp values that will be committed on "Kaydet"
+    int tempHour = _notifHour;
+    int tempMinute = _notifMinute;
+
+    showModalBottomSheet(
+      backgroundColor: Colors.transparent,
+      context: context,
+      isScrollControlled: true,
+      builder: (BuildContext ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Container(
+              decoration: BoxDecoration(
+                color: modalBgColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, -5),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 45,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white24 : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.deepOrange.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(
+                            Icons.alarm_outlined,
+                            color: Colors.deepOrange,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Text(
+                          'Bildirim Saatini Seç',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      'Kalan askerlik gününü her gün bu saatte hatırlatacağız.',
+                      style: TextStyle(
+                        color: isDark ? Colors.white54 : Colors.black45,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // Time display + stepper
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isDark ? Colors.white12 : Colors.grey.shade200,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Hour selector
+                          _buildTimeColumn(
+                            label: 'Saat',
+                            value: tempHour,
+                            min: 0,
+                            max: 23,
+                            isDark: isDark,
+                            textColor: textColor,
+                            onDecrement: () => setModalState(() {
+                              tempHour = (tempHour - 1 + 24) % 24;
+                            }),
+                            onIncrement: () => setModalState(() {
+                              tempHour = (tempHour + 1) % 24;
+                            }),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              ':',
+                              style: TextStyle(
+                                fontSize: 36,
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
+                            ),
+                          ),
+                          // Minute selector
+                          _buildTimeColumn(
+                            label: 'Dakika',
+                            value: tempMinute,
+                            min: 0,
+                            max: 59,
+                            isDark: isDark,
+                            textColor: textColor,
+                            onDecrement: () => setModalState(() {
+                              tempMinute = (tempMinute - 1 + 60) % 60;
+                            }),
+                            onIncrement: () => setModalState(() {
+                              tempMinute = (tempMinute + 1) % 60;
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  // Save & Cancel buttons
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              side: BorderSide(
+                                color: isDark ? Colors.white24 : Colors.grey.shade300,
+                              ),
+                            ),
+                            child: Text(
+                              'Vazgeç',
+                              style: TextStyle(
+                                color: isDark ? Colors.white54 : Colors.black54,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              Navigator.of(ctx).pop();
+                              // Save and reschedule
+                              await NotificationService()
+                                  .saveNotificationTime(tempHour, tempMinute);
+                              if (mounted) {
+                                setState(() {
+                                  _notifHour = tempHour;
+                                  _notifMinute = tempMinute;
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '✅ Bildirim saati ${tempHour.toString().padLeft(2, '0')}:${tempMinute.toString().padLeft(2, '0')} olarak ayarlandı.',
+                                    ),
+                                    backgroundColor: Colors.deepOrange,
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepOrange,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: const Text(
+                              'Kaydet',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // ✅ Test notification button
+                  const SizedBox(height: 10),
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(horizontal: 24),
+                  //   child: SizedBox(
+                  //     width: double.infinity,
+                  //     child: TextButton.icon(
+                  //       onPressed: () async {
+                  //         Navigator.of(ctx).pop();
+                  //         await NotificationService().showTestNotification();
+                  //         if (mounted) {
+                  //           ScaffoldMessenger.of(context).showSnackBar(
+                  //             SnackBar(
+                  //               content: const Text(
+                  //                 '🔔 Test bildirimi gönderildi! Görünmüyorsa sistem ayarlarından izni kontrol edin.',
+                  //               ),
+                  //               backgroundColor: Colors.blueGrey.shade700,
+                  //               behavior: SnackBarBehavior.floating,
+                  //               duration: const Duration(seconds: 4),
+                  //               shape: RoundedRectangleBorder(
+                  //                 borderRadius: BorderRadius.circular(12),
+                  //               ),
+                  //             ),
+                  //           );
+                  //         }
+                  //       },
+                  //       icon: const Icon(Icons.notifications_outlined, size: 18),
+                  //       label: const Text('Test Bildirimi Gönder'),
+                  //       style: TextButton.styleFrom(
+                  //         foregroundColor: isDark ? Colors.white54 : Colors.blueGrey,
+                  //         padding: const EdgeInsets.symmetric(vertical: 10),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
+
+                  // const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+  Widget _buildTimeColumn({
+    required String label,
+    required int value,
+    required int min,
+    required int max,
+    required bool isDark,
+    required Color textColor,
+    required VoidCallback onDecrement,
+    required VoidCallback onIncrement,
+  }) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white54 : Colors.black45,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 8),
+        IconButton(
+          onPressed: onIncrement,
+          icon: Icon(
+            Icons.keyboard_arrow_up_rounded,
+            color: Colors.deepOrange,
+            size: 30,
+          ),
+        ),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, anim) =>
+              ScaleTransition(scale: anim, child: child),
+          child: Text(
+            value.toString().padLeft(2, '0'),
+            key: ValueKey(value),
+            style: TextStyle(
+              fontSize: 40,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+              letterSpacing: 1,
+            ),
+          ),
+        ),
+        IconButton(
+          onPressed: onDecrement,
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Colors.deepOrange,
+            size: 30,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── End Bildirim Saati ───────────────────────────────────────────────────
+
   Widget _buildListTile({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
     Color? iconColor,
   }) {
+
     final bool isDark = !_isDefaultTheme;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
