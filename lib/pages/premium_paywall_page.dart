@@ -1453,12 +1453,12 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildLink("Kullanım Koşulları", "https://bayesa.com/terms"),
+            _buildLink("Kullanım Koşulları", "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Text("•", style: TextStyle(color: Color(0xFF4A4E5E))),
             ),
-            _buildLink("Gizlilik Politikası", "https://bayesa.com/privacy"),
+            _buildLink("Gizlilik Politikası", "https://safaksayar.vercel.app/#/privacy"),
           ],
         ),
         const SizedBox(height: 14),
