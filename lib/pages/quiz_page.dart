@@ -1,10 +1,17 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
-import 'package:confetti/confetti.dart';
-import 'package:safaksayar/widgets/custom_question_button.dart';
+import 'package:flutter/services.dart';
+import 'package:safaksayar/Services/millionaire_duel_service.dart';
+import 'package:safaksayar/Services/millionaire_rights_service.dart';
+import 'package:safaksayar/Services/revenue_cat_service.dart';
+import 'package:safaksayar/pages/millionaire/millionaire_classic_page.dart';
+import 'package:safaksayar/pages/millionaire/millionaire_duel_page.dart';
+import 'package:safaksayar/pages/millionaire/millionaire_leaderboard_page.dart';
+import 'package:safaksayar/pages/premium_paywall_page.dart';
+import 'package:safaksayar/ads/ad_manager.dart';
+import 'package:safaksayar/widgets/millionaire/millionaire_ladder_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Kim Milyoner Olmak İster Grand Hub & Game Arena
 class QuizPage extends StatefulWidget {
   const QuizPage({super.key});
 
@@ -13,422 +20,467 @@ class QuizPage extends StatefulWidget {
 }
 
 class _QuizPageState extends State<QuizPage> {
-  int selectedOption = -1; // Kullanıcının seçtiği seçenek
-  bool isCorrect = false; // Doğru cevap mı?
-  bool showAnswer = false; // Cevap gösteriliyor mu?
-  late ConfettiController _confettiController;
-  int score = 0; // Kullanıcı puanı
-  late List<Map<String, dynamic>> questions; // Rastgele sorular
-
-  // Soruların listesi
-  final List<Map<String, dynamic>> allQuestions = [
-    {
-      "question": "Hasbihal, ne demektir?",
-      "options": ["Gürültü", "Geçmiş", "Sohbet", "Özlem"],
-      "answerIndex": 2,
-    },
-    {
-      "question": '"Azı dişi" hangisinin eş anlamlısıdır?',
-      "options": ["Sindirici diş", "Öğütücü diş", "Koparıcı diş", "Kesici diş"],
-      "answerIndex": 1,
-    },
-    {
-      "question": 'Hangisi "bıkmak" anlamına gelir?',
-      "options": [
-        "Hizaya gelmek",
-        "Kıvamına gelmek",
-        "Gına gelmek",
-        "Yola gelmek"
-      ],
-      "answerIndex": 2,
-    },
-    {
-      "question":
-          '"Mavi, lacivert, mor ve bu renklerin tonları" hangisinin sözlük tanımıdır?',
-      "options": [
-        "Sıcak renkler",
-        "Soğuk renkler",
-        "Ilık renkler",
-        "Serin renkler"
-      ],
-      "answerIndex": 1,
-    },
-    {
-      "question": '"Siklamen" adlı bitkinin diğer adı nedir?',
-      "options": ["Tavşankulağı", "Aslanağzı", "Kasımpatı", "Kaynanadili"],
-      "answerIndex": 0,
-    },
-    {
-      "question":
-          'Azerbaycan bayrağının eşit genişlikteki üç yatay parçasının yukarıdan aşağıya, doğru sıralaması nasıldır?',
-      "options": [
-        "Kırmızı, mavi, yeşil",
-        "Mavi, yeşil, kırmızı",
-        "Yeşil, kırmızı, mavi",
-        "Mavi, kırmızı, yeşil"
-      ],
-      "answerIndex": 3,
-    },
-    {
-      "question":
-          'Hangisi atletizmde "dekatlon"da yarışan sporcuların mücadele ettikleri dallardan biri değildir?',
-      "options": ["Cirit atma", "Yüzme", "100 metre koşusu", "Sırıkla atlama"],
-      "answerIndex": 1,
-    },
-    {
-      "question": "Altay Dağları'na tırmanan bir dağcı hangisinde olabilir?",
-      "options": ["İzmir", "Kahire", "Bombay", "Moğolistan"],
-      "answerIndex": 3,
-    },
-    {
-      "question": "Kaçkar Dağı, hangi coğrafi bölgenin en yüksek dağıdır?",
-      "options": ["Ege", "Marmara", "Akdeniz", "Karadeniz"],
-      "answerIndex": 3,
-    },
-    {
-      "question": "Türkiye'nin nüfusu en az olan bölgesi hangisidir?",
-      "options": [
-        "Karadeniz Bölgesi",
-        "Ege Bölgesi",
-        "Doğu Anadolu Bölgesi",
-        "Güneydoğu Anadolu Bölgesi"
-      ],
-      "answerIndex": 2,
-    },
-    {
-      "question":
-          "Türkçeye Fransızcadan geçen 'doktor' kelimesinin kökeninin anlamı nedir?",
-      "options": ["Gözlemlemek", "Araştırmak", "Öğretmek", "Tedavi etmek"],
-      "answerIndex": 2,
-    },
-    {
-      "question": '"Bonjur" hangi anlamda kullanılan bir sözdür?',
-      "options": [
-        "Günaydın, merhaba",
-        "Güle güle, görüşürüz",
-        "Kendine iyi bak, hoşça kal",
-        "İyi uykular, tatlı rüyalar"
-      ],
-      "answerIndex": 0,
-    },
-    {
-      "question":
-          'Fen bilimleri derslerinde "camın kırılması, buzun erimesi, kâğıdın yırtılması" hangisine örnek olarak gösterilir?',
-      "options": [
-        "Kimyasal değişim",
-        "Fiziksel değişim",
-        "Zihniyet değişimi",
-        "Hava değişimi"
-      ],
-      "answerIndex": 1,
-    },
-    {
-      "question":
-          'Futbolda, özellikle anlaşmazlıklara sebep olan pozisyonları engellemeyi hedefleyerek kullanılan sistemin "VAR" şeklinde kısaltmasının açılımı nedir?',
-      "options": [
-        "Video yardımcı hakem",
-        "Video araştırma raporlama",
-        "Video inceleme odası",
-        "Video analiz rehberi"
-      ],
-      "answerIndex": 0,
-    },
-    {
-      "question": 'Hangi iki Osmanlı padişahı kardeş değildir?',
-      "options": [
-        "II. Mustafa ve III. Ahmed",
-        "III. Selim ve II. Mahmud",
-        "Abdülmecid ve Abdülaziz",
-        "V. Mehmed ve V. Murad"
-      ],
-      "answerIndex": 1,
-    },
-    {
-      "question":
-          '4 yanlışın 1 doğruyu götürdüğü 100 soruluk çoktan seçmeli bir sınavda 9 boşu ve 8 yanlışı olan birinin neti kaçtır?',
-      "options": ["83", "81", "79", "77"],
-      "answerIndex": 1,
-    },
-    {
-      "question":
-          "Osmanlı Devleti'nde tahtta en kısa süre kalan padişah kimdir?",
-      "options": ["II. Mustafa", "III. Selim", "IV. Mehmed", "V. Murad"],
-      "answerIndex": 3,
-    },
-    {
-      "question": "Türkiye'nin en az ilçesi olan ili hangisidir?",
-      "options": ["Tokat", "Kırıkkale", "Uşak", "Bayburt"],
-      "answerIndex": 3,
-    },
-    {
-      "question":
-          "100 metre koşusunda koşucuların vücudunun ilk olarak hangi kısmının bitiş çizgisini geçtiği an, yarışı tamamladıkları kabul edilir?",
-      "options": ["Ayak", "Kol", "Kafa", "Gövde"],
-      "answerIndex": 3,
-    },
-    {
-      "question":
-          "Bugüne kadar hangi iki futbol takımı arasında 'UEFA Şampiyonlar Ligi' final müsabakası oynanmamıştır?",
-      "options": [
-        "Juventus ve Milan",
-        "Manchester City ve Chelsea",
-        "Real Madrid ve Barcelona",
-        "Bayern Münih ve Borussia Dortmund"
-      ],
-      "answerIndex": 2,
-    },
-    {
-      "question":
-          "Eski milli futbolcu ve teknik direktör Sergen Yalçın'ın tam adı nedir?",
-      "options": [
-        "Metin Ali Sergen",
-        "Ali Rıza Sergen Yalçın",
-        "Rıza Feyyaz Sergen Yalçın",
-        "Muhsin Metin Sergen Yalçın"
-      ],
-      "answerIndex": 1,
-    },
-
-    // Buraya 100+ soru ekleyebilirsiniz
-  ];
-
-  int currentQuestionIndex = 0; // Şu anki soru
+  int _totalEarned = 0;
+  int _duelWins = 0;
 
   @override
   void initState() {
     super.initState();
-    _confettiController =
-        ConfettiController(duration: const Duration(seconds: 2));
-    _loadScore();
-    _shuffleQuestions(); // Soruları rastgele sırala
+    MillionaireRightsService.instance.getRemainingRights();
+    _loadUserStats();
   }
 
-  @override
-  void dispose() {
-    _confettiController.dispose();
-    super.dispose();
-  }
-
-  // Soruları karıştır
-  void _shuffleQuestions() {
-    questions = List<Map<String, dynamic>>.from(allQuestions);
-    questions.shuffle(Random());
-  }
-
-  void checkAnswer(int index) {
-    setState(() {
-      selectedOption = index;
-      showAnswer = true;
-      isCorrect = index == questions[currentQuestionIndex]['answerIndex'];
-
-      if (isCorrect) {
-        score += 10; // Doğru cevap için 10 puan ekle
-        _saveScore(); // Güncellenen puanı kaydet
-        _confettiController.play();
-      }
-    });
-  }
-
-  void nextQuestion() {
-    setState(() {
-      // Son soruya geldiğinde başa döner
-      if (currentQuestionIndex < questions.length - 1) {
-        currentQuestionIndex++;
-      } else {
-        currentQuestionIndex =
-            0; // İsterseniz sona geldiğinde "Tebrikler" ekranı gösterebilirsiniz
-        _shuffleQuestions();
-      }
-
-      // Varsayılan değerlere sıfırla
-      selectedOption = -1;
-      showAnswer = false;
-      isCorrect = false;
-    });
-  }
-
-  // Puanı yükleme
-  Future<void> _loadScore() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      score = prefs.getInt('score') ??
-          0; // Kaydedilmiş puanı yükle veya sıfırdan başlat
-    });
-  }
-
-  // Puanı kaydetme
-  Future<void> _saveScore() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('score', score);
-  }
-
-  // Puanı sıfırlama fonksiyonu
-  Future<void> _resetScore() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      score = 0; // Puanı sıfırla
-    });
-    await prefs.setInt('score', 0); // SharedPreferences'ta sıfır olarak kaydet
-  }
-
-  Future<void> _showResetConfirmationDialog() async {
-    bool? shouldReset = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Puanı Sıfırla"),
-          content: Text("Puanlar silinecek. Emin misiniz?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false), // Hayır
-              child: Text("Hayır"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true), // Evet
-              child: Text("Evet"),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (shouldReset == true) {
-      _resetScore(); // Kullanıcı onayladıysa puanı sıfırla
+  Future<void> _loadUserStats() async {
+    await MillionaireDuelService.instance.initUserProfile();
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _totalEarned = prefs.getInt('score') ?? 0;
+        _duelWins = prefs.getInt('duel_wins') ?? 0;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentQuestion = questions[currentQuestionIndex];
-
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        backgroundColor: Colors.grey.shade100,
-        title: Text("Soru-Cevap", style: TextStyle(color: Colors.black)),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Center(
-              child: Text(
-                "Puan: $score",
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.black,
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF070B19),
+      body: Stack(
+        children: [
+          // Background Gradient
+          Container(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0, -0.3),
+                radius: 1.2,
+                colors: [
+                  Color(0xFF162554),
+                  Color(0xFF0A0F24),
+                  Color(0xFF03050C),
+                ],
               ),
             ),
           ),
-          IconButton(
-            onPressed: _showResetConfirmationDialog,
-            icon: Icon(
-              Icons.refresh,
-              color: Colors.black,
-            ), // Sıfırlama simgesi
-            tooltip: "Puanı Sıfırla",
+
+          SafeArea(
+            child: Column(
+              children: [
+                // ==========================================
+                // APP BAR
+                // ==========================================
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      const Text(
+                        "KİM MİLYONER OLMAK İSTER",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.1,
+                          color: Colors.white,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.info_outline_rounded, color: Colors.amberAccent, size: 22),
+                        tooltip: "Para Ağacı & Kurallar",
+                        onPressed: () => MillionaireLadderSheet.show(
+                          context,
+                          currentStep: 1,
+                          currentEarned: 0,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ==========================================
+                // MAIN SCROLLABLE CONTENT
+                // ==========================================
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // HERO BANNER
+                        Center(
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 140,
+                                height: 140,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                                      blurRadius: 36,
+                                      spreadRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: Image.asset(
+                                  'assets/images/milyoner.webp',
+                                  width: 120,
+                                  height: 120,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    width: 120,
+                                    height: 120,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E293B),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: const Color(0xFFF59E0B), width: 2),
+                                    ),
+                                    child: const Icon(Icons.stars_rounded, color: Color(0xFFF59E0B), size: 60),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        const Text(
+                          "BİLGİNİ SINA, ŞAMPİYON OL!",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.1,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          "Askerlik ve genel kültür sorularıyla 5.000.000 TL büyük ödüle koş ya da diğer asker ve yakınlarıyla canlı düellolarda yarış!",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.white70,
+                            height: 1.35,
+                          ),
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // USER STATS BAR
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F172A),
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              Column(
+                                children: [
+                                  const Text("YARIŞMACI", style: TextStyle(fontSize: 9, color: Colors.white54, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    MillionaireDuelService.instance.currentUserName,
+                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                              Container(height: 22, width: 1, color: Colors.white12),
+                              ValueListenableBuilder<bool>(
+                                valueListenable: RevenueCatService.instance.isPremiumNotifier,
+                                builder: (context, isPro, _) {
+                                  if (isPro) {
+                                    return const Column(
+                                      children: [
+                                        Text("KLASİK HAK", style: TextStyle(fontSize: 9, color: Colors.white54, fontWeight: FontWeight.bold)),
+                                        SizedBox(height: 3),
+                                        Text("👑 SINIRSIZ", style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFFF59E0B))),
+                                      ],
+                                    );
+                                  }
+                                  return ValueListenableBuilder<int>(
+                                    valueListenable: MillionaireRightsService.instance.remainingRightsNotifier,
+                                    builder: (context, rights, _) {
+                                      final hasRights = rights > 0;
+                                      return Column(
+                                        children: [
+                                          const Text("GÜNLÜK HAK", style: TextStyle(fontSize: 9, color: Colors.white54, fontWeight: FontWeight.bold)),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            "$rights/3",
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w900,
+                                              color: hasRights ? const Color(0xFFF59E0B) : const Color(0xFFEF4444),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                              ),
+                              Container(height: 22, width: 1, color: Colors.white12),
+                              Column(
+                                children: [
+                                  const Text("KAZANILAN", style: TextStyle(fontSize: 9, color: Colors.white54, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    _totalEarned > 0 ? "$_totalEarned TL" : "0 TL",
+                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF10B981)),
+                                  ),
+                                ],
+                              ),
+                              Container(height: 22, width: 1, color: Colors.white12),
+                              Column(
+                                children: [
+                                  const Text("DÜELLO", style: TextStyle(fontSize: 9, color: Colors.white54, fontWeight: FontWeight.bold)),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    _duelWins > 0 ? "$_duelWins Zafer" : "0 Zafer",
+                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w900, color: Color(0xFF38BDF8)),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // ==========================================
+                        // MODE 1: KLASİK YARIŞMA (12 BASAMAK)
+                        // ==========================================
+                        ValueListenableBuilder<bool>(
+                          valueListenable: RevenueCatService.instance.isPremiumNotifier,
+                          builder: (context, isPro, _) {
+                            return ValueListenableBuilder<int>(
+                              valueListenable: MillionaireRightsService.instance.remainingRightsNotifier,
+                              builder: (context, rights, _) {
+                                final badge = isPro ? "STÜDYO FORMATI • 👑 SINIRSIZ HAK" : "STÜDYO FORMATI • $rights/3 GÜNLÜK HAK";
+                                final buttonLabel = (isPro || rights > 0) ? "Yarışmaya Başla ▶" : "Haklar Doldu • PRO'ya Geç 👑";
+                                return _buildGameModeCard(
+                                  title: "KLASİK YARIŞMA",
+                                  subtitle: isPro
+                                      ? "12 Basamak • 4 Joker • 5.000.000 TL Hedef (Sınırsız Oyna)"
+                                      : "12 Basamak • 4 Joker • 5.000.000 TL Hedef ($rights/3 Hak Kaldı)",
+                                  badgeText: badge,
+                                  icon: Icons.military_tech_rounded,
+                                  accentColor: const Color(0xFFF59E0B),
+                                  gradientColors: [const Color(0xFFB45309), const Color(0xFF1E293B)],
+                                  buttonLabel: buttonLabel,
+                                  onTap: () async {
+                                    if (!RevenueCatService.instance.isPremium) {
+                                      final remaining = await MillionaireRightsService.instance.getRemainingRights();
+                                      if (remaining <= 0) {
+                                        if (mounted) {
+                                          await PremiumPaywallPage.show(context, source: 'millionaire_classic_limit');
+                                        }
+                                        if (!mounted || !RevenueCatService.instance.isPremium) {
+                                          return;
+                                        }
+                                      } else {
+                                        await MillionaireRightsService.instance.useOneRight();
+                                      }
+                                    }
+                                    if (mounted) {
+                                      AdManager.instance.showArenaInterstitialAd();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const MillionaireClassicPage()),
+                                      );
+                                    }
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // ==========================================
+                        // MODE 2: CANLI 1V1 DÜELLO (ONLINE)
+                        // ==========================================
+                        ValueListenableBuilder<bool>(
+                          valueListenable: RevenueCatService.instance.isPremiumNotifier,
+                          builder: (context, isPro, _) {
+                            return _buildGameModeCard(
+                              title: "CANLI 1v1 DÜELLO",
+                              subtitle: "Askerler ve Yakınlarıyla Online Karşılaşma • 5 Hızlı Soru",
+                              badgeText: isPro ? "ONLINE ÇOK OYUNCULU • PRO AKTİF" : "ONLINE ÇOK OYUNCULU • 👑 PRO ÖZEL",
+                              icon: Icons.flash_on_rounded,
+                              accentColor: const Color(0xFF38BDF8),
+                              gradientColors: [const Color(0xFF0369A1), const Color(0xFF1E293B)],
+                              buttonLabel: "Düello Arenasına Gir ⚔️",
+                              onTap: () {
+                                AdManager.instance.showArenaInterstitialAd();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const MillionaireDuelPage()),
+                                );
+                              },
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // ==========================================
+                        // MODE 3: LİDER TABLOSU (LEADERBOARD)
+                        // ==========================================
+                        _buildGameModeCard(
+                          title: "LİDER TABLOSU",
+                          subtitle: "Türkiye Geneli Şampiyonlar • Milyonerler & Düello Zaferleri",
+                          badgeText: "ŞAMPİYONLAR LİGİ",
+                          icon: Icons.emoji_events_rounded,
+                          accentColor: const Color(0xFF10B981),
+                          gradientColors: [const Color(0xFF047857), const Color(0xFF1E293B)],
+                          buttonLabel: "Sıralamayı Gör 🏆",
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const MillionaireLeaderboardPage()),
+                            );
+                          },
+                        ),
+
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-// Soru Alanı
-            Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withValues(alpha: 0.4),
-                    spreadRadius: 3,
-                    blurRadius: 8,
-                    offset: Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Text(
-                currentQuestion['question'],
-                style: TextStyle(
-                  fontSize: 22.0,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurpleAccent,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            SizedBox(height: 20),
+    ),
+    );
+  }
 
-            // Şıklar
-            Expanded(
-              child: ListView.builder(
-                itemCount: currentQuestion['options'].length,
-                itemBuilder: (context, index) {
-                  bool isSelected = selectedOption == index;
-                  bool isCorrectOption =
-                      showAnswer && index == currentQuestion['answerIndex'];
-
-                  return GestureDetector(
-                    onTap: showAnswer ? null : () => checkAnswer(index),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5),
-                      child: Card(
-                        color: isSelected
-                            ? (isCorrect ? Colors.green : Colors.red)
-                            : (isCorrectOption ? Colors.green : Colors.white),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            currentQuestion['options'][index],
-                            style: TextStyle(fontSize: 18.0),
-                          ),
+  Widget _buildGameModeCard({
+    required String title,
+    required String subtitle,
+    required String badgeText,
+    required IconData icon,
+    required Color accentColor,
+    required List<Color> gradientColors,
+    required String buttonLabel,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: accentColor.withValues(alpha: 0.6), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: accentColor.withValues(alpha: 0.2),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: accentColor.withValues(alpha: 0.6)),
+                      ),
+                      child: Text(
+                        badgeText,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                          color: accentColor,
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-
-            // Konfeti Efekti
-            if (showAnswer && isCorrect)
-              Align(
-                alignment: Alignment.center,
-                child: ConfettiWidget(
-                  confettiController: _confettiController,
-                  blastDirectionality: BlastDirectionality.explosive,
-                  shouldLoop: false,
+                    Icon(icon, color: accentColor, size: 28),
+                  ],
                 ),
-              ),
-
-            // Cevap Geri Bildirimi
-            if (showAnswer)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  isCorrect
-                      ? "Doğru Cevap!"
-                      : "Yanlış Cevap! Doğru: ${currentQuestion['options'][currentQuestion['answerIndex']]}",
-                  style: TextStyle(
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.bold,
-                    color: isCorrect ? Colors.green : Colors.red,
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                    color: Colors.white,
                   ),
                 ),
-              ),
-
-            // Yeni Soru Butonu
-            if (showAnswer)
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: CustomGradientQuestionButton(
-                  currentQuestionIndex: currentQuestionIndex,
-                  totalQuestions: questions.length,
-                  nextQuestion: nextQuestion,
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 12, color: Colors.white70, height: 1.3),
                 ),
-              ),
-          ],
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentColor.withValues(alpha: 0.4),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    buttonLabel,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

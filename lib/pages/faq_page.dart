@@ -386,12 +386,7 @@ class _FaqCardState extends State<FaqCard> with SingleTickerProviderStateMixin {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: _isExpanded ? Colors.blueAccent.withValues(alpha: 0.3) : const Color(0xFFE9ECEF),
-          width: _isExpanded ? 1.5 : 1.0,
-        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -400,81 +395,92 @@ class _FaqCardState extends State<FaqCard> with SingleTickerProviderStateMixin {
           ),
         ],
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          dividerColor: Colors.transparent,
-          splashColor: Colors.blueAccent.withValues(alpha: 0.02),
-          highlightColor: Colors.transparent,
+      child: Material(
+        color: Colors.white,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: _isExpanded ? Colors.blueAccent.withValues(alpha: 0.3) : const Color(0xFFE9ECEF),
+            width: _isExpanded ? 1.5 : 1.0,
+          ),
         ),
-        child: ExpansionTile(
-          onExpansionChanged: _onExpansionChanged,
-          title: Text(
-            widget.question,
-            style: TextStyle(
-              fontSize: 15.5,
-              fontWeight: FontWeight.bold,
-              color: _isExpanded ? Colors.blueAccent : Colors.black87,
-            ),
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            dividerColor: Colors.transparent,
+            splashColor: Colors.blueAccent.withValues(alpha: 0.04),
+            highlightColor: Colors.transparent,
           ),
-          trailing: RotationTransition(
-            turns: _iconRotation,
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: _isExpanded
-                    ? Colors.blueAccent.withValues(alpha: 0.1)
-                    : const Color(0xFFF1F3F5),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.keyboard_arrow_down,
-                size: 20,
-                color: _isExpanded ? Colors.blueAccent : Colors.grey.shade600,
+          child: ExpansionTile(
+            onExpansionChanged: _onExpansionChanged,
+            title: Text(
+              widget.question,
+              style: TextStyle(
+                fontSize: 15.5,
+                fontWeight: FontWeight.bold,
+                color: _isExpanded ? Colors.blueAccent : Colors.black87,
               ),
             ),
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 1,
-                    color: const Color(0xFFF1F3F5),
-                    margin: const EdgeInsets.only(bottom: 12),
-                  ),
-                  Text(
-                    widget.answer,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade800,
-                      height: 1.55,
+            trailing: RotationTransition(
+              turns: _iconRotation,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: _isExpanded
+                      ? Colors.blueAccent.withValues(alpha: 0.1)
+                      : const Color(0xFFF1F3F5),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 20,
+                  color: _isExpanded ? Colors.blueAccent : Colors.grey.shade600,
+                ),
+              ),
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 1,
+                      color: const Color(0xFFF1F3F5),
+                      margin: const EdgeInsets.only(bottom: 12),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.blueAccent.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(6),
+                    Text(
+                      widget.answer,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade800,
+                        height: 1.55,
                       ),
-                      child: Text(
-                        widget.category,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blueAccent,
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blueAccent.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          widget.category,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueAccent,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

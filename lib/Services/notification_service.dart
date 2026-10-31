@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -27,15 +29,18 @@ class NotificationService {
   static const int _maxNotifications = 60;
 
   bool _initialized = false;
+  Future<void>? _initFuture;
 
   // ── Init ─────────────────────────────────────────────────────────────────
 
   /// Initializes timezone data and the notifications plugin.
   /// Call this once at app startup.
-  Future<void> init() async {
-    if (_initialized) return;
-    _initialized = true;
+  Future<void> init() {
+    if (_initialized) return Future.value();
+    return _initFuture ??= _doInit();
+  }
 
+  Future<void> _doInit() async {
     // Load all timezone definitions
     tzdata.initializeTimeZones();
 
@@ -88,6 +93,7 @@ class NotificationService {
             ),
           );
     }
+    _initialized = true;
   }
 
   @pragma('vm:entry-point')
@@ -99,6 +105,7 @@ class NotificationService {
 
   /// Requests notification permissions.
   Future<bool> requestPermissions() async {
+    await init();
     bool granted = false;
 
     if (Platform.isIOS) {
@@ -129,6 +136,7 @@ class NotificationService {
   /// ✅ Includes TODAY if the notification time hasn't passed yet.
   /// Call this every time the app opens or resumes foreground.
   Future<void> scheduleAllNotifications() async {
+    await init();
     final SharedPreferences prefs = await SharedPreferences.getInstance();
 
     final String? endDateStr = prefs.getString('end_date');
@@ -192,8 +200,10 @@ class NotificationService {
       final int remainingOnThatDay =
           endDate.difference(targetDay).inDays;
 
-      final String title = '🪖 Şafak Sayar';
-      final String body = _buildMessage(remainingOnThatDay);
+      final String userRole = prefs.getString('user_role') ?? 'asker';
+      final bool isRelative = userRole == 'yakin';
+      final String title = isRelative ? '💕 Şafak Sayar' : '🪖 Şafak Sayar';
+      final String body = _buildMessage(remainingOnThatDay, isRelative: isRelative);
 
       await _plugin.zonedSchedule(
         i, // notification ID = day offset (0 = today, 1 = tomorrow, ...)
@@ -220,6 +230,8 @@ class NotificationService {
   Future<void> showTestNotification() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final String? endDateStr = prefs.getString('end_date');
+    final String userRole = prefs.getString('user_role') ?? 'asker';
+    final bool isRelative = userRole == 'yakin';
     int remaining = 0;
     if (endDateStr != null) {
       try {
@@ -229,8 +241,8 @@ class NotificationService {
 
     await _plugin.show(
       999,
-      '🪖 Şafak Sayar — Test',
-      _buildMessage(remaining),
+      isRelative ? '💕 Şafak Sayar — Test' : '🪖 Şafak Sayar — Test',
+      _buildMessage(remaining, isRelative: isRelative),
       _notificationDetails(),
     );
     print('[NotificationService] Test bildirimi gönderildi.');
@@ -240,6 +252,112 @@ class NotificationService {
   Future<void> cancelAll() async {
     await _plugin.cancelAll();
     print('[NotificationService] Tüm bildirimler iptal edildi.');
+  }
+
+  /// Shows an instant local notification when a new capsule is received from the other party
+  Future<void> showInstantCapsuleNotification({
+    required String senderName,
+    required String senderRole,
+    required String dateKey,
+    bool hasAudio = false,
+    bool hasImage = false,
+    bool hasNote = false,
+  }) async {
+    try {
+      final notifId = (DateTime.now().millisecondsSinceEpoch % 100000) + 40000;
+      final title = senderRole == 'yakin'
+          ? '💌 $senderName Takvime Zaman Kapsülü Bıraktı!'
+          : '🎖️ Askerin $senderName Takvime Anı Bıraktı!';
+
+      String body;
+      if (hasAudio && hasImage) {
+        body = '🎙️📸 Sana özel sesli mesaj ve fotoğraf bıraktı! ($dateKey) 🔒';
+      } else if (hasAudio) {
+        body = '🎙️ Sana özel sesli bir mesaj kaydetti! ($dateKey) 🔒';
+      } else if (hasImage) {
+        body = '📸 Sana özel bir fotoğraf ve anı bıraktı! ($dateKey) 🔒';
+      } else if (hasNote) {
+        body = '📝 Sana özel yeni bir mektup bıraktı! ($dateKey) 🔒';
+      } else {
+        body = 'Takviminde sana özel yeni bir zaman kapsülü kilitledi! ($dateKey) 🔒';
+      }
+
+      await _plugin.show(
+        notifId,
+        title,
+        body,
+        _notificationDetails(),
+        payload: jsonEncode({
+          'type': 'calendar_capsule',
+          'dateKey': dateKey,
+          'senderName': senderName,
+        }),
+      );
+      debugPrint('[NotificationService] Instant capsule notification displayed: $title');
+    } catch (e) {
+      debugPrint('[NotificationService] Error showing instant capsule notification: $e');
+    }
+  }
+
+  /// Schedules a reminder notification for when a time capsule unlocks (on targetDate at 09:00 AM)
+  Future<void> scheduleCapsuleUnlockNotification({
+    required String capsuleId,
+    required String senderName,
+    required String dateKey, // 'YYYY-MM-DD'
+  }) async {
+    try {
+      final parts = dateKey.split('-');
+      if (parts.length != 3) return;
+      final year = int.parse(parts[0]);
+      final month = int.parse(parts[1]);
+      final day = int.parse(parts[2]);
+
+      final tz.TZDateTime nowTZ = tz.TZDateTime.now(tz.local);
+      tz.TZDateTime scheduledTime = tz.TZDateTime(
+        tz.local,
+        year,
+        month,
+        day,
+        9, // 09:00 AM
+        0,
+        0,
+      );
+
+      // If 09:00 on that day already passed and today is the target day, schedule for now + 2 seconds
+      if (scheduledTime.isBefore(nowTZ)) {
+        final todayNormalized = DateTime(nowTZ.year, nowTZ.month, nowTZ.day);
+        final targetNormalized = DateTime(year, month, day);
+        if (todayNormalized.isAtSameMomentAs(targetNormalized)) {
+          scheduledTime = nowTZ.add(const Duration(seconds: 2));
+        } else {
+          return; // Past date, do not schedule
+        }
+      }
+
+      final notifId = (capsuleId.hashCode.abs() % 100000) + 30000;
+      final title = '🎉 Zaman Kapsülünün Kilidi Açıldı!';
+      final body = '💌 $senderName tarafından senin için bırakılan zaman kapsülü mesajı açıldı! Görmek için dokun.';
+
+      await _plugin.zonedSchedule(
+        notifId,
+        title,
+        body,
+        scheduledTime,
+        _notificationDetails(),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.wallClockTime,
+        payload: jsonEncode({
+          'type': 'calendar_capsule_unlocked',
+          'capsuleId': capsuleId,
+          'dateKey': dateKey,
+          'senderName': senderName,
+        }),
+      );
+      debugPrint('[NotificationService] Scheduled capsule unlock notification for $dateKey at ${scheduledTime.toString()} (ID: $notifId)');
+    } catch (e) {
+      debugPrint('[NotificationService] Error scheduling capsule unlock: $e');
+    }
   }
 
   /// Returns count of pending notifications (for debug).
@@ -279,7 +397,20 @@ class NotificationService {
     );
   }
 
-  String _buildMessage(int remainingDays) {
+  String _buildMessage(int remainingDays, {bool isRelative = false}) {
+    if (isRelative) {
+      if (remainingDays <= 0) {
+        return 'Büyük kavuşma günü geldi çattı! Gözünüz aydın! 🎉💕';
+      } else if (remainingDays == 1) {
+        return 'Kavuşmaya son 1 gün! Yarın büyük kavuşma! 💕🔥';
+      } else if (remainingDays <= 7) {
+        return 'Kavuşmaya $remainingDays gün kaldı! Sabırsızlıkla beklenen an çok yakın! 💕';
+      } else if (remainingDays <= 30) {
+        return 'Kavuşmaya $remainingDays gün kaldı! Günler hızla tükeniyor! ✨';
+      } else {
+        return 'Kavuşmaya $remainingDays gün kaldı! Sevgi ve sabırla beklemeye devam! 💕';
+      }
+    }
     if (remainingDays <= 0) {
       return 'Terhis! Hayırlı uğurlu olsun, asker! 🎉';
     } else if (remainingDays == 1) {

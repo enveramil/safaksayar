@@ -1,14 +1,18 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:safaksayar/pages/home.dart';
 import 'package:safaksayar/state_bottom_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:safaksayar/Services/soldier_match_service.dart';
+import 'package:safaksayar/Services/revenue_cat_service.dart';
+import 'package:safaksayar/pages/premium_paywall_page.dart';
 
 class UserInputPage extends StatefulWidget {
-  const UserInputPage({super.key});
+  final String? initialRole; // 'asker' or 'yakin'
+  final String? initialRelationship; // 'es', 'aile', 'arkadas', 'diger'
+  const UserInputPage({super.key, this.initialRole, this.initialRelationship});
 
   @override
   State<UserInputPage> createState() => _UserInputPageState();
@@ -28,6 +32,10 @@ class _UserInputPageState extends State<UserInputPage> {
   String? yolIzni;
   int? yolIzniDisplay;
   int _currentStep = 0; // Çok adımlı form için adımlar
+  String _userRole = 'asker';
+  String? _relationship;
+
+  bool get _isRelative => _userRole == 'yakin';
 
   // Türkiye'nin 81 ili
   final List<String> iller = [
@@ -120,23 +128,6 @@ class _UserInputPageState extends State<UserInputPage> {
     _loadData(); // Sayfa yüklendiğinde kayıtlı verileri çek
   }
 
-  // Tarih seçici
-  Future<void> _pickDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ??
-          DateTime
-              .now(), // Eğer daha önce tarih seçilmişse initialDate olarak gösterilir
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
   Future<void> _showCupertinoDatePicker(BuildContext context) async {
     DateTime tempSelectedDate = _selectedDate ?? DateTime.now(); // Geçici tarih
 
@@ -225,6 +216,8 @@ class _UserInputPageState extends State<UserInputPage> {
   Future<void> _loadData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
+      _userRole = widget.initialRole ?? prefs.getString('user_role') ?? 'asker';
+      _relationship = widget.initialRelationship ?? prefs.getString('relationship');
       _nameController.text = prefs.getString('name') ?? '';
       _surnameController.text = prefs.getString('surname') ?? '';
       _selectedAskerlikYeri = prefs.getString('askerlik_yeri');
@@ -286,10 +279,8 @@ class _UserInputPageState extends State<UserInputPage> {
         yolIzniDisplay = 1;
       }
       // Toplam süreyi hesapla (izin ve ceza günleri eklenmiş)
-      int izinGunu = int.tryParse(_izinController.text ?? '0') ??
-          0; // Kullanılan izin günleri
-      int cezaGunu =
-          int.tryParse(_cezaController.text ?? '0') ?? 0; // Alınan ceza günleri
+      int izinGunu = int.tryParse(_izinController.text) ?? 0; // Kullanılan izin günleri
+      int cezaGunu = int.tryParse(_cezaController.text) ?? 0; // Alınan ceza günleri
 
       if (selectedDuration == 1) {
         // Süreyi, izin ve ceza günlerini hesaba katarak bitiş tarihini hesapla
@@ -337,10 +328,15 @@ class _UserInputPageState extends State<UserInputPage> {
       // Güncellenmiş terhis tarihini kaydet
       await prefs.setString('end_date', endDate.toIso8601String());
       await prefs.setString('rutbe', rutbe ?? '');
-      await prefs.setInt(
-          'izin', izinGunu ?? 0); // Kullanılan izin günlerini kaydet
-      await prefs.setInt('ceza', cezaGunu ?? 0); // Alınan ceza günlerini kaydet
+      await prefs.setInt('izin', izinGunu); // Kullanılan izin günlerini kaydet
+      await prefs.setInt('ceza', cezaGunu); // Alınan ceza günlerini kaydet
       await prefs.setString('yolIzni', yolIzni ?? '');
+
+      // Rol ve yakınlık bilgisini kaydet
+      await prefs.setString('user_role', _userRole);
+      if (_relationship != null) {
+        await prefs.setString('relationship', _relationship!);
+      }
 
       // Get or create unique sequential userId
       String? userId = prefs.getString('userId');
@@ -366,27 +362,51 @@ class _UserInputPageState extends State<UserInputPage> {
         }
       }
 
+      // Generate or retrieve tracking code
+      String trackingCode = prefs.getString('tracking_code') ?? '';
+      if (trackingCode.isEmpty) {
+        trackingCode = await SoldierMatchService.instance.generateOrGetTrackingCode();
+        await prefs.setString('tracking_code', trackingCode);
+      }
+
+      final soldierDataMap = {
+        'userId': userId,
+        'tracking_code': trackingCode,
+        'user_role': _userRole,
+        'name': _nameController.text,
+        'surname': _surnameController.text,
+        'askerlik_yeri': _selectedAskerlikYeri ?? '',
+        'memleket': _selectedMemleket ?? '',
+        'kuvvet_komutanligi': _selectedKuvvetKomutanligi ?? '',
+        'sulus_tarihi': _selectedDate?.toIso8601String() ?? '',
+        'duration': selectedDuration!,
+        'end_date': endDate.toIso8601String(),
+        'rutbe': rutbe ?? '',
+        'izin': izinGunu,
+        'ceza': cezaGunu,
+        'yolIzni': yolIzni ?? '',
+        'updated_at': FieldValue.serverTimestamp(),
+      };
+
       try {
-        await FirebaseFirestore.instance.collection('users').doc(userId).set({
-          'userId': userId,
-          'name': _nameController.text,
-          'surname': _surnameController.text,
-          'askerlik_yeri': _selectedAskerlikYeri ?? '',
-          'memleket': _selectedMemleket ?? '',
-          'kuvvet_komutanligi': _selectedKuvvetKomutanligi ?? '',
-          'sulus_tarihi': _selectedDate?.toIso8601String() ?? '',
-          'duration': selectedDuration!,
-          'end_date': endDate.toIso8601String(),
-          'rutbe': rutbe ?? '',
-          'izin': izinGunu,
-          'ceza': cezaGunu,
-          'yolIzni': yolIzni ?? '',
-          'updated_at': FieldValue.serverTimestamp(),
-        });
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .set(soldierDataMap, SetOptions(merge: true));
         print('User successfully saved to Firestore with ID: $userId');
       } catch (e) {
         print('Error saving user to Firestore: $e');
       }
+
+      // Mevcut veya aktif aboneliği (users/{userId}.isPremium + RevenueCat) doğrula
+      await RevenueCatService.instance.bindUser(userId);
+
+      // Always publish to tracking_codes so relatives can find and follow
+      await SoldierMatchService.instance.publishSoldierData(
+        trackingCode: trackingCode,
+        userId: userId,
+        data: soldierDataMap,
+      );
     }
   }
 
@@ -466,11 +486,23 @@ class _UserInputPageState extends State<UserInputPage> {
         final prefs = await SharedPreferences.getInstance();
         final themeImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
 
-        // Ana sayfaya yönlendir
-        await Navigator.of(context).pushAndRemoveUntil(
-          _customPageRoute(ManagePages(backgroundImage: themeImage), 'ManagePages'),
-          (Route<dynamic> route) => false,
-        );
+        // Kullanıcı henüz premium değilse, şafak bilgilerini kaydettikten sonra paywall ekranını göster
+        if (!RevenueCatService.instance.isPremium) {
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              settings: const RouteSettings(name: 'PremiumPaywallPage'),
+              builder: (_) => const PremiumPaywallPage(source: 'post_info_save'),
+            ),
+          );
+        }
+
+        if (mounted) {
+          // Ana sayfaya yönlendir
+          await Navigator.of(context).pushAndRemoveUntil(
+            _customPageRoute(ManagePages(backgroundImage: themeImage), 'ManagePages'),
+            (Route<dynamic> route) => false,
+          );
+        }
       }
     } else {
       // Eksik alanlar varsa uyarı gösterebilirsin
@@ -566,9 +598,9 @@ class _UserInputPageState extends State<UserInputPage> {
                   ),
                 )
               : const SizedBox(width: 38),
-          const Text(
-            'Kurulum Sihirbazı',
-            style: TextStyle(
+          Text(
+            _isRelative ? 'Asker Şafak Kurulumu' : 'Kurulum Sihirbazı',
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -581,7 +613,7 @@ class _UserInputPageState extends State<UserInputPage> {
               color: Colors.white.withValues(alpha: 0.05),
               shape: BoxShape.circle,
             ),
-            child: CircleAvatar(
+            child: const CircleAvatar(
               radius: 14,
               backgroundImage: AssetImage('assets/images/app_logo.png'),
             ),
@@ -644,11 +676,11 @@ class _UserInputPageState extends State<UserInputPage> {
   String _getStepTitle() {
     switch (_currentStep) {
       case 0:
-        return 'Kişisel Profil';
+        return _isRelative ? 'Askerinizin Kimliği' : 'Kişisel Profil';
       case 1:
-        return 'Askerlik Bilgileri';
+        return _isRelative ? 'Askerinizin Görevi' : 'Askerlik Bilgileri';
       case 2:
-        return 'Tarih & İzinler';
+        return _isRelative ? 'Sülüs & İzinler' : 'Tarih & İzinler';
       default:
         return '';
     }
@@ -673,20 +705,20 @@ class _UserInputPageState extends State<UserInputPage> {
         const SizedBox(height: 12),
         buildTextField(
           controller: _nameController,
-          label: 'Adınız',
+          label: _isRelative ? 'Askerinizin Adı' : 'Adınız',
           icon: Icons.person_outline,
         ),
         const SizedBox(height: 16),
         buildTextField(
           controller: _surnameController,
-          label: 'Soyadınız',
+          label: _isRelative ? 'Askerinizin Soyadı' : 'Soyadınız',
           icon: Icons.badge_outlined,
         ),
         const SizedBox(height: 16),
         buildDropdown(
-          label: 'Memleket (İl)',
+          label: _isRelative ? 'Askerinizin Memleketi (İl)' : 'Memleket (İl)',
           value: _selectedMemleket,
-          hint: 'Memleketinizi seçin',
+          hint: _isRelative ? 'Askerinizin memleketini seçin' : 'Memleketinizi seçin',
           icon: Icons.home_outlined,
           items: iller,
           onChanged: (value) {
@@ -706,7 +738,7 @@ class _UserInputPageState extends State<UserInputPage> {
         buildDropdown(
           label: 'Kuvvet Komutanlığı',
           value: _selectedKuvvetKomutanligi,
-          hint: 'Kuvvetinizi seçin',
+          hint: _isRelative ? 'Askerinizin kuvvetini seçin' : 'Kuvvetinizi seçin',
           icon: Icons.military_tech_outlined,
           items: ['Hava', 'Deniz', 'Kara', 'Jandarma'],
           onChanged: (value) {
@@ -719,7 +751,7 @@ class _UserInputPageState extends State<UserInputPage> {
         buildDropdown(
           label: 'Rütbe',
           value: rutbe,
-          hint: 'Rütbenizi seçin',
+          hint: _isRelative ? 'Askerinizin rütbesini seçin' : 'Rütbenizi seçin',
           icon: Icons.shield_outlined,
           items: [
             'ER',
@@ -738,9 +770,9 @@ class _UserInputPageState extends State<UserInputPage> {
         ),
         const SizedBox(height: 16),
         buildDropdown(
-          label: 'Görev Yeri (İl)',
+          label: _isRelative ? 'Görev Yeri (İl)' : 'Görev Yeri (İl)',
           value: _selectedAskerlikYeri,
-          hint: 'Görev yerinizi seçin',
+          hint: _isRelative ? 'Askerinizin görev yerini seçin' : 'Görev yerinizi seçin',
           icon: Icons.location_on_outlined,
           items: iller,
           onChanged: (value) {
@@ -757,7 +789,7 @@ class _UserInputPageState extends State<UserInputPage> {
               : selectedDuration != null
                   ? '$selectedDuration Ay'
                   : null,
-          hint: 'Askerlik sürenizi seçin',
+          hint: _isRelative ? 'Askerlik süresini seçin' : 'Askerlik sürenizi seçin',
           icon: Icons.schedule_outlined,
           items: [1, 6, 12]
               .map((e) => e == 1 ? '$e Ay(Bedelli)' : '$e Ay')
@@ -783,7 +815,7 @@ class _UserInputPageState extends State<UserInputPage> {
             Expanded(
               child: buildTextField(
                 controller: _izinController,
-                label: 'Kullanılan İzin',
+                label: _isRelative ? 'Kullanılan İzin (Gün)' : 'Kullanılan İzin',
                 icon: Icons.flight_takeoff_outlined,
                 inputType: TextInputType.number,
               ),
@@ -792,7 +824,7 @@ class _UserInputPageState extends State<UserInputPage> {
             Expanded(
               child: buildTextField(
                 controller: _cezaController,
-                label: 'Alınan Ceza',
+                label: _isRelative ? 'Alınan Ceza (Gün)' : 'Alınan Ceza',
                 icon: Icons.gavel_outlined,
                 inputType: TextInputType.number,
               ),
@@ -803,7 +835,7 @@ class _UserInputPageState extends State<UserInputPage> {
         buildDropdown(
           label: 'Yol İzni (Gün)',
           value: yolIzni,
-          hint: 'Yol izninizi seçin',
+          hint: _isRelative ? 'Yol iznini seçin' : 'Yol izninizi seçin',
           icon: Icons.commute_outlined,
           items: [
             '1 (Terhis)',
@@ -948,7 +980,7 @@ class _UserInputPageState extends State<UserInputPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Sülüs Tarihi',
+                    _isRelative ? 'Askerinizin Sülüs Tarihi' : 'Sülüs Tarihi',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.6),
                       fontSize: 11,
@@ -958,7 +990,7 @@ class _UserInputPageState extends State<UserInputPage> {
                   const SizedBox(height: 2),
                   Text(
                     _selectedDate == null
-                        ? 'Sülüs Tarihini Seçin'
+                        ? (_isRelative ? 'Askerinizin Sülüs Tarihini Seçin' : 'Sülüs Tarihini Seçin')
                         : DateFormat('dd.MM.yyyy').format(_selectedDate!),
                     style: TextStyle(
                       fontSize: 15,

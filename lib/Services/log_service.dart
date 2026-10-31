@@ -76,12 +76,16 @@ class LogService {
         return 'Şafak Çizelgesi';
       case 'ThemePage':
         return 'Temalar';
+      case 'ThemePreviewPage':
+        return 'Tema Önizleme';
+      case 'LiveShareSimulationPage':
+        return 'Canlı Paylaşım Simülasyonu';
       case 'HomeScreen':
         return 'Ana Sayfa';
       case 'InfoScreen':
-        return 'Bilgi Ekranı';
+        return 'Kışla Merkezi';
       case 'ChatScreen':
-        return 'Asker Sohbet';
+        return 'Asker Forumu';
       case 'ProfileScreen':
         return 'Yönetim Paneli';
       default:
@@ -110,9 +114,9 @@ class LogService {
       case 0:
         return 'Ana Sayfa';
       case 1:
-        return 'Bilgi Ekranı';
+        return 'Kışla Merkezi';
       case 2:
-        return 'Asker Sohbet';
+        return 'Asker Forumu';
       case 3:
         return 'Yönetim Paneli';
       default:
@@ -179,8 +183,14 @@ class LogService {
   }
 
   void onGlobalTap(PointerDownEvent event) {
-    final String tappedItem = _getTappedElementName(event);
-    _saveClick(_currentPage, tappedItem);
+    Future.microtask(() {
+      try {
+        final String tappedItem = _getTappedElementName(event);
+        _saveClick(_currentPage, tappedItem);
+      } catch (e) {
+        debugPrint('Error in global tap log: $e');
+      }
+    });
   }
 
   Future<void> _saveClick(String page, String elementId) async {

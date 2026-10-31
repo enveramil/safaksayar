@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:safaksayar/pages/user_input_page.dart';
+import 'package:safaksayar/Services/soldier_match_service.dart';
+import 'package:safaksayar/pages/onboarding_showcase_page.dart';
+import 'package:safaksayar/pages/welcome_role_page.dart';
 import 'package:safaksayar/state_bottom_bar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:safaksayar/ads/ad_manager.dart';
 
 class SplashScreen extends StatefulWidget {
   @override
@@ -17,64 +17,24 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkIfUserDataExists(); // Verileri kontrol et
   }
 
-  InterstitialAd? _interstitialAd;
-  bool _isAdReady = false;
-
-  void _loadInterstitialAd() {
-    if (AdManager.isDev) return;
-    InterstitialAd.load(
-      adUnitId:
-          'ca-app-pub-4655119937024112/6340277716', // AdMob'dan aldığınız ID
-      request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) {
-          _interstitialAd = ad;
-          _isAdReady = true;
-
-          // Bekleme süresi ekleyerek reklamı göster
-          Future.delayed(const Duration(seconds: 5), () {
-            //_showInterstitialAd(); // 5 saniye bekledikten sonra reklamı göster
-          });
-        },
-        onAdFailedToLoad: (error) {
-          print('InterstitialAd yüklenemedi: $error');
-        },
-      ),
-    );
-  }
-
-  void _showInterstitialAd() {
-    if (_isAdReady) {
-      _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-        onAdDismissedFullScreenContent: (ad) {
-          ad.dispose();
-          print('Reklam kapatıldı.');
-        },
-        onAdFailedToShowFullScreenContent: (ad, error) {
-          ad.dispose();
-          print('Reklam gösterilemedi: $error');
-        },
-      );
-
-      _interstitialAd!.show();
-    } else {
-      print('Reklam hazır değil.');
-    }
-  }
-
-  @override
-  void dispose() {
-    // Eğer _interstitialAd null değilse dispose et
-    try {
-      _interstitialAd?.dispose();
-      _interstitialAd = null;
-    } catch (ex) {}
-    super.dispose();
-  }
-
   // Verilerin SharedPreferences'ta olup olmadığını kontrol et
   Future<void> _checkIfUserDataExists() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    final bool onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+    // 1. Show cinematic onboarding once upon fresh launch
+    if (!onboardingCompleted) {
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          settings: const RouteSettings(name: 'OnboardingShowcasePage'),
+          builder: (context) => const OnboardingShowcasePage(),
+        ),
+      );
+      return;
+    }
+
     String? name = prefs.getString('name');
     String? surname = prefs.getString('surname');
     String? askerlikYeri = prefs.getString('askerlik_yeri');
@@ -85,6 +45,13 @@ class _SplashScreenState extends State<SplashScreen> {
         surname != null &&
         askerlikYeri != null &&
         memleket != null) {
+      final role = prefs.getString('user_role') ?? 'asker';
+      if (role == 'asker') {
+        SoldierMatchService.instance.ensureSoldierPublished();
+      } else if (role == 'yakin' && (prefs.getBool('is_paired') ?? false)) {
+        SoldierMatchService.instance.syncPairedSoldierData();
+      }
+
       // Eğer veriler mevcutsa ana sayfaya yönlendir
       Navigator.pushReplacement(
         context,
@@ -93,15 +60,13 @@ class _SplashScreenState extends State<SplashScreen> {
           builder: (context) => ManagePages(backgroundImage: themeImage),
         ),
       );
-      // Reklam göster
-      _loadInterstitialAd(); // Reklamı yükle
     } else {
-      // Eğer veri yoksa kullanıcıyı veri giriş sayfasına yönlendir
+      // Eğer veri yoksa kullanıcıyı Karşılama & Rol Seçim sayfasına yönlendir
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          settings: const RouteSettings(name: 'UserInputPage'),
-          builder: (context) => UserInputPage(),
+          settings: const RouteSettings(name: 'WelcomeRolePage'),
+          builder: (context) => const WelcomeRolePage(),
         ),
       );
     }
@@ -109,10 +74,15 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Geçici splash ekranı gösterebilirsin
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(child: Container()),
+      backgroundColor: const Color(0xFF0F172A),
+      body: Center(
+        child: Image.asset(
+          'assets/images/app_logo.png',
+          width: 96,
+          height: 96,
+        ),
+      ),
     );
   }
 }

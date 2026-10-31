@@ -77,6 +77,43 @@ struct SimpleEntry: TimelineEntry {
     let name: String
     let sulusTarihi: Date
     let terhisTarihi: Date
+    
+    var progress: Double {
+        let total = terhisTarihi.timeIntervalSince(sulusTarihi)
+        guard total > 0 else { return 0.0 }
+        let elapsed = Date().timeIntervalSince(sulusTarihi)
+        return max(0.0, min(1.0, elapsed / total))
+    }
+    
+    var progressPercent: Double {
+        return progress * 100.0
+    }
+    
+    var statusMessage: String {
+        if remainingDays <= 0 {
+            return "Şafak Doğan Güneş!"
+        } else if remainingDays <= 10 {
+            return "Kayıp Şafak!"
+        } else if remainingDays <= 30 {
+            return "Bitiyor, son 1 ay!"
+        } else if remainingDays <= 100 {
+            return "Çift hanelere az kaldı!"
+        } else {
+            return "Vatan Sağ Olsun!"
+        }
+    }
+    
+    var formattedTerhisDate: String {
+        let df = DateFormatter()
+        df.dateFormat = "dd.MM.yyyy"
+        return df.string(from: terhisTarihi)
+    }
+    
+    var formattedSulusDate: String {
+        let df = DateFormatter()
+        df.dateFormat = "dd.MM.yyyy"
+        return df.string(from: sulusTarihi)
+    }
 }
 
 struct SafakWidgetExtensionEntryView : View {
@@ -84,16 +121,41 @@ struct SafakWidgetExtensionEntryView : View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        Group {
-            switch family {
-            case .systemSmall:
+        contentView
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .modifier(WidgetBackgroundModifier(background: backgroundView))
+    }
+    
+    @ViewBuilder
+    private var contentView: some View {
+        switch family {
+        case .systemSmall:
+            SmallWidgetView(entry: entry)
+        case .systemMedium:
+            MediumWidgetView(entry: entry)
+        #if compiler(>=5.7)
+        case .accessoryCircular:
+            if #available(iOS 16.0, *) {
+                AccessoryCircularView(entry: entry)
+            } else {
                 SmallWidgetView(entry: entry)
-            default:
+            }
+        case .accessoryRectangular:
+            if #available(iOS 16.0, *) {
+                AccessoryRectangularView(entry: entry)
+            } else {
                 MediumWidgetView(entry: entry)
             }
+        case .accessoryInline:
+            if #available(iOS 16.0, *) {
+                AccessoryInlineView(entry: entry)
+            } else {
+                Text("Şafak: \(entry.remainingDays) Gün")
+            }
+        #endif
+        default:
+            MediumWidgetView(entry: entry)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .modifier(WidgetBackgroundModifier(background: backgroundView))
     }
 
     var backgroundView: some View {
@@ -110,20 +172,139 @@ struct SafakWidgetExtensionEntryView : View {
 
 struct WidgetBackgroundModifier<Background: View>: ViewModifier {
     let background: Background
+    @Environment(\.widgetFamily) var family
 
     func body(content: Content) -> some View {
         #if compiler(>=5.9)
         if #available(iOS 17.0, *) {
-            return AnyView(
-                content.containerBackground(for: .widget) {
-                    background
-                }
-            )
+            if isAccessory {
+                return AnyView(
+                    content.containerBackground(for: .widget) {
+                        Color.clear
+                    }
+                )
+            } else {
+                return AnyView(
+                    content.containerBackground(for: .widget) {
+                        background
+                    }
+                )
+            }
         }
         #endif
-        return AnyView(content.background(background))
+        
+        if isAccessory {
+            return AnyView(content)
+        } else {
+            return AnyView(content.background(background))
+        }
+    }
+    
+    private var isAccessory: Bool {
+        #if compiler(>=5.7)
+        if #available(iOS 16.0, *) {
+            return family == .accessoryCircular || family == .accessoryRectangular || family == .accessoryInline
+        }
+        #endif
+        return false
     }
 }
+
+// MARK: - Lock Screen Widgets (iOS 16+)
+
+#if compiler(>=5.7)
+@available(iOS 16.0, *)
+struct AccessoryCircularView: View {
+    let entry: Provider.Entry
+    
+    var body: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            
+            Circle()
+                .stroke(Color.white.opacity(0.2), lineWidth: 4)
+            
+            Circle()
+                .trim(from: 0.0, to: CGFloat(entry.progress))
+                .stroke(Color.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            
+            VStack(spacing: -1) {
+                Text("\(entry.remainingDays)")
+                    .font(.system(size: 19, weight: .black, design: .rounded))
+                    .minimumScaleFactor(0.55)
+                    .lineLimit(1)
+                
+                Text("GÜN")
+                    .font(.system(size: 8, weight: .heavy, design: .rounded))
+                    .opacity(0.85)
+            }
+            .padding(2)
+        }
+    }
+}
+
+@available(iOS 16.0, *)
+struct AccessoryRectangularView: View {
+    let entry: Provider.Entry
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Image(systemName: "star.fill")
+                    .font(.system(size: 9))
+                Text("ŞAFAK: \(entry.remainingDays) GÜN")
+                    .font(.system(size: 12, weight: .heavy, design: .rounded))
+                    .lineLimit(1)
+            }
+            
+            Text(entry.name.uppercased())
+                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                .lineLimit(1)
+                .opacity(0.9)
+            
+            // Progress Bar
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.white.opacity(0.25))
+                        .frame(height: 4)
+                    
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(Color.white)
+                        .frame(width: max(0, min(geo.size.width, geo.size.width * CGFloat(entry.progress))), height: 4)
+                }
+            }
+            .frame(height: 4)
+            .padding(.vertical, 1)
+            
+            HStack {
+                Text("%\(Int(entry.progressPercent)) bitti")
+                    .font(.system(size: 8.5, weight: .bold))
+                Spacer()
+                Text("Terhis: \(entry.formattedTerhisDate)")
+                    .font(.system(size: 8.5, weight: .medium))
+            }
+            .opacity(0.85)
+        }
+    }
+}
+
+@available(iOS 16.0, *)
+struct AccessoryInlineView: View {
+    let entry: Provider.Entry
+    
+    var body: some View {
+        ViewThatFits {
+            Label("Şafak: \(entry.remainingDays) Gün (\(entry.name))", systemImage: "star.fill")
+            Label("Şafak: \(entry.remainingDays) Gün", systemImage: "star.fill")
+            Label("\(entry.remainingDays) Gün Kaldı", systemImage: "star.fill")
+        }
+    }
+}
+#endif
+
+// MARK: - Home Screen Widgets
 
 struct SmallWidgetView: View {
     let entry: Provider.Entry
@@ -201,7 +382,7 @@ struct MediumWidgetView: View {
                 
                 Spacer(minLength: 0)
                 
-                Text(statusMessage)
+                Text(entry.statusMessage)
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(.white.opacity(0.95))
                     .lineLimit(1)
@@ -228,7 +409,7 @@ struct MediumWidgetView: View {
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.white.opacity(0.8))
                         Spacer()
-                        Text("\(Int(progressPercent))%")
+                        Text("\(Int(entry.progressPercent))%")
                             .font(.system(size: 9, weight: .black))
                             .foregroundColor(.white)
                     }
@@ -241,7 +422,7 @@ struct MediumWidgetView: View {
                             
                             RoundedRectangle(cornerRadius: 3.5)
                                 .fill(Color.white)
-                                .frame(width: geo.size.width * CGFloat(progress), height: 7)
+                                .frame(width: geo.size.width * CGFloat(entry.progress), height: 7)
                         }
                     }
                     .frame(height: 7)
@@ -256,7 +437,7 @@ struct MediumWidgetView: View {
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.white.opacity(0.75))
                         Spacer()
-                        Text(formatDate(entry.sulusTarihi))
+                        Text(entry.formattedSulusDate)
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.white)
                     }
@@ -265,7 +446,7 @@ struct MediumWidgetView: View {
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.white.opacity(0.75))
                         Spacer()
-                        Text(formatDate(entry.terhisTarihi))
+                        Text(entry.formattedTerhisDate)
                             .font(.system(size: 9, weight: .bold))
                             .foregroundColor(.white)
                     }
@@ -273,38 +454,6 @@ struct MediumWidgetView: View {
             }
         }
         .padding(16)
-    }
-    
-    private var progress: Double {
-        let total = entry.terhisTarihi.timeIntervalSince(entry.sulusTarihi)
-        guard total > 0 else { return 0.0 }
-        let elapsed = Date().timeIntervalSince(entry.sulusTarihi)
-        return max(0.0, min(1.0, elapsed / total))
-    }
-    
-    private var progressPercent: Double {
-        return progress * 100.0
-    }
-    
-    private var statusMessage: String {
-        let days = entry.remainingDays
-        if days <= 0 {
-            return "Şafak Doğan Güneş!"
-        } else if days <= 10 {
-            return "Kayıp Şafak!"
-        } else if days <= 30 {
-            return "Bitiyor, son 1 ay!"
-        } else if days <= 100 {
-            return "Çift hanelere az kaldı!"
-        } else {
-            return "Vatan Sağ Olsun!"
-        }
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let df = DateFormatter()
-        df.dateFormat = "dd.MM.yyyy"
-        return df.string(from: date)
     }
 }
 
@@ -318,8 +467,23 @@ struct SafakWidgetExtension: Widget {
         }
         .configurationDisplayName("Şafak Sayar")
         .description("Kalan askerlik sürenizi gösteren widget.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies(supportedFamilies)
         .disableContentMarginsIfNeeded()
+    }
+    
+    private var supportedFamilies: [WidgetFamily] {
+        #if compiler(>=5.7)
+        if #available(iOS 16.0, *) {
+            return [
+                .systemSmall,
+                .systemMedium,
+                .accessoryCircular,
+                .accessoryRectangular,
+                .accessoryInline
+            ]
+        }
+        #endif
+        return [.systemSmall, .systemMedium]
     }
 }
 

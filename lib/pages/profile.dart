@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:safaksayar/ads/ad_manager.dart';
 import 'package:safaksayar/pages/theme_page.dart';
 import 'package:safaksayar/pages/user_input_page.dart';
+import 'package:safaksayar/pages/welcome_role_page.dart';
 import 'package:safaksayar/pages/ani_defteri_page.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +12,10 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:safaksayar/Services/notification_service.dart';
+import 'package:safaksayar/Services/soldier_match_service.dart';
+import 'package:safaksayar/Services/revenue_cat_service.dart';
+import 'package:safaksayar/pages/premium_paywall_page.dart';
+import 'package:safaksayar/pages/live_share_simulation_page.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String backgroundImage;
@@ -30,11 +36,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _terhisTarihi = '';
   int _notifHour = 21;
   int _notifMinute = 0;
+  String _userRole = 'asker';
+  String? _relationship;
+  String _trackingCode = '';
+  String _pairedCode = '';
+  bool _isPaired = false;
 
   @override
   void initState() {
     super.initState();
+    SoldierMatchService.instance.dataSyncVersion.addListener(_onExternalDataChanged);
     _loadProfileData();
+  }
+
+  @override
+  void dispose() {
+    SoldierMatchService.instance.dataSyncVersion.removeListener(_onExternalDataChanged);
+    super.dispose();
+  }
+
+  void _onExternalDataChanged() {
+    if (mounted) {
+      _loadProfileData();
+    }
   }
 
   Future<void> _loadProfileData() async {
@@ -51,7 +75,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _terhisTarihi = prefs.getString('end_date') ?? '';
         _notifHour = prefs.getInt('notif_hour') ?? 21;
         _notifMinute = prefs.getInt('notif_minute') ?? 0;
+        _userRole = prefs.getString('user_role') ?? 'asker';
+        _relationship = prefs.getString('relationship');
+        _trackingCode = prefs.getString('tracking_code') ?? '';
+        _pairedCode = prefs.getString('paired_code') ?? '';
+        _isPaired = prefs.getBool('is_paired') ?? false;
       });
+
+      if (_userRole == 'asker' && _trackingCode.isEmpty) {
+        final code = await SoldierMatchService.instance.generateOrGetTrackingCode();
+        if (mounted) {
+          setState(() {
+            _trackingCode = code;
+          });
+        }
+      }
     }
   }
 
@@ -189,6 +227,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            if (_userRole == 'yakin') ...[
+                              Text(
+                                'TAKİP EDİLEN ASKER',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.pinkAccent,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                            ],
                             Text(
                               fullName,
                               maxLines: 1,
@@ -201,29 +251,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.12)
-                                    : Colors.blueAccent.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: isDark
-                                      ? Colors.white12
-                                      : Colors.blueAccent.withValues(alpha: 0.2),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? (_userRole == 'yakin'
+                                            ? Colors.pinkAccent.withValues(alpha: 0.15)
+                                            : Colors.white.withValues(alpha: 0.12))
+                                        : (_userRole == 'yakin'
+                                            ? Colors.pinkAccent.withValues(alpha: 0.1)
+                                            : Colors.blueAccent.withValues(alpha: 0.1)),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: _userRole == 'yakin'
+                                          ? Colors.pinkAccent.withValues(alpha: 0.3)
+                                          : (isDark
+                                              ? Colors.white12
+                                              : Colors.blueAccent.withValues(alpha: 0.2)),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _userRole == 'yakin'
+                                        ? SoldierMatchService.getRelationshipLabel(_relationship).toUpperCase()
+                                        : (_rutbe.isNotEmpty ? _rutbe.toUpperCase() : 'ASKER'),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: _userRole == 'yakin'
+                                          ? Colors.pinkAccent
+                                          : (isDark ? Colors.white : Colors.blueAccent),
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              child: Text(
-                                _rutbe.isNotEmpty ? _rutbe.toUpperCase() : 'ASKER',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : Colors.blueAccent,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
+                                if (_userRole == 'yakin' && _isPaired)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.greenAccent.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: Colors.greenAccent.withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: const BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.greenAccent,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _pairedCode.isNotEmpty ? _pairedCode : 'BAĞLI',
+                                          style: const TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.greenAccent,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
                           ],
                         ),
@@ -241,7 +342,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Expanded(
                         child: _buildDetailItem(
                           Icons.location_on_outlined,
-                          'GÖREV YERİ',
+                          _userRole == 'yakin' ? 'ASKERİN BİRLİĞİ' : 'GÖREV YERİ',
                           _askerlikYeri.isNotEmpty ? _askerlikYeri : 'Belirtilmedi',
                         ),
                       ),
@@ -267,7 +368,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Expanded(
                         child: _buildDetailItem(
                           Icons.verified_user_outlined,
-                          'TERHİS TARİHİ',
+                          _userRole == 'yakin' ? 'KAVUŞMA TARİHİ' : 'TERHİS TARİHİ',
                           _formatDate(_terhisTarihi),
                         ),
                       ),
@@ -279,6 +380,886 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSoldierTrackingManagementCard() {
+    final bool isDark = !_isDefaultTheme;
+    final code = _trackingCode.isNotEmpty ? _trackingCode : 'SFK-YÜKLENİYOR';
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: RevenueCatService.instance.isPremiumNotifier,
+      builder: (context, isPremium, _) {
+        if (!isPremium) {
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: _getCardColor(),
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF1E1B4B).withValues(alpha: 0.95), const Color(0xFF0F172A).withValues(alpha: 0.98)]
+                    : [Colors.white, const Color(0xFFFAF5FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.45 : 0.35),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.15 : 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFD700), Color(0xFFF59E0B)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.favorite_rounded, color: Color(0xFF1F1600), size: 18),
+                        ),
+                        const SizedBox(width: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'AİLE & EŞ TAKİP KODU',
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w900,
+                                color: isDark ? Colors.amberAccent : Colors.amber.shade900,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              'Sevdiklerinle Canlı Paylaşım',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w800,
+                                color: _getTextColor(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFFD700), Color(0xFFF59E0B)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.workspace_premium_rounded, size: 12, color: Color(0xFF1F1600)),
+                          SizedBox(width: 3),
+                          Text(
+                            'PRO',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1F1600),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                // Masked code (Tıklanınca Simülasyon Önizleme Açılır)
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    LiveShareSimulationPage.show(context, initialTab: 0);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.black.withValues(alpha: 0.4) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.lock_rounded, color: Color(0xFFF59E0B), size: 18),
+                            const SizedBox(width: 10),
+                            Text(
+                              'TR-••••••',
+                              style: TextStyle(
+                                color: isDark ? Colors.white60 : Colors.black45,
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 3.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.35)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.play_circle_fill_rounded, size: 12, color: Color(0xFFF59E0B)),
+                              SizedBox(width: 4),
+                              Text(
+                                'DEMO ÖNİZLE',
+                                style: TextStyle(
+                                  color: Color(0xFFF59E0B),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Sevgilin, eşin veya ailen kendi telefonundan şafağını canlı takip edebilir ve takvimine sürpriz Zaman Kapsülü bırakabilir.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: _getSubtitleColor(),
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 11,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          LiveShareSimulationPage.show(context, initialTab: 0);
+                        },
+                        icon: Icon(
+                          Icons.slideshow_rounded,
+                          size: 16,
+                          color: isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+                        ),
+                        label: Text(
+                          'Simülasyonu Gör',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : const Color(0xFFFFFBEB),
+                          side: BorderSide(
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.55),
+                            width: 1.2,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 12,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          PremiumPaywallPage.show(context, source: 'profile_tracking_code');
+                        },
+                        icon: const Icon(Icons.lock_open_rounded, size: 16, color: Color(0xFF1F1600)),
+                        label: const Text(
+                          "KİLİDİ AÇ • PRO",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF1F1600),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFFD700),
+                          foregroundColor: const Color(0xFF1F1600),
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 3,
+                          shadowColor: const Color(0xFFFFD700).withValues(alpha: 0.4),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: _getCardColor(),
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                  : [Colors.white, const Color(0xFFF1F5F9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.4 : 0.3),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.08),
+                blurRadius: 15,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.2 : 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.share_location_rounded, color: Color(0xFF10B981), size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'AİLE & EŞ TAKİP KODUNUZ',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: _getTextColor(),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'PRO AKTİF',
+                                style: TextStyle(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Bu kodu yakınlarınızla paylaşarak sizi takip etmelerini sağlayın',
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            color: _getSubtitleColor(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              // Code Box
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0B132B) : Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.blueAccent.withValues(alpha: 0.35),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'EŞLEŞME KODUNUZ',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.blue.shade200 : Colors.blue.shade700,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          SelectableText(
+                            code,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.blueAccent,
+                              letterSpacing: 2.0,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton.filledTonal(
+                      icon: const Icon(Icons.copy_rounded, size: 20),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: code));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Takip kodu kopyalandı: $code'),
+                            backgroundColor: Colors.blueAccent,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Actions
+              Row(
+                children: [
+                  Expanded(
+                    child: Builder(
+                      builder: (btnContext) {
+                        return OutlinedButton.icon(
+                          icon: const Icon(Icons.share_rounded, size: 16),
+                          label: const Text('Kodu Paylaş', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.blueAccent,
+                            side: const BorderSide(color: Colors.blueAccent),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () {
+                            final message = 'Askerlik şafağımı Şafak Sayar uygulamasından anlık takip edebilirsin! Takip Kodum: $code\nUygulamayı indirip bu kodu girmen yeterli.';
+                            RenderBox? box = btnContext.findRenderObject() as RenderBox?;
+                            Rect? origin;
+                            if (box != null && box.hasSize && box.size.width > 0 && box.size.height > 0) {
+                              origin = box.localToGlobal(Offset.zero) & box.size;
+                            } else {
+                              final size = MediaQuery.sizeOf(btnContext);
+                              origin = Rect.fromLTWH(size.width / 2 - 100, size.height / 2 - 100, 200, 200);
+                            }
+                            Share.share(message, subject: 'Şafak Takip Kodu: $code', sharePositionOrigin: origin);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.tonalIcon(
+                      icon: const Icon(Icons.people_alt_rounded, size: 16),
+                      label: const Text('Takipçiler', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.blueAccent.withValues(alpha: 0.18),
+                        foregroundColor: Colors.blueAccent,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () => _showFollowersModal(code),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRelativeTrackingManagementCard() {
+    final bool isDark = !_isDefaultTheme;
+    final soldierName = '$_name $_surname'.trim();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _getCardColor(),
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+              : [Colors.white, const Color(0xFFFFF1F2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? Colors.pinkAccent.withValues(alpha: 0.4) : Colors.pink.shade200,
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.pinkAccent.withValues(alpha: isDark ? 0.15 : 0.08),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.pinkAccent.withValues(alpha: isDark ? 0.2 : 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.favorite_rounded, color: Colors.pinkAccent, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isPaired ? 'CANLI ASKER BAĞLANTISI' : 'MANUEL TAKİP MODU',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: _getTextColor(),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _isPaired
+                          ? 'Asker: $soldierName ($_pairedCode)'
+                          : 'Askerinizin takip kodunu girerek canlı bağlantı kurabilirsiniz',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: _getSubtitleColor(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _isPaired ? Colors.green.withValues(alpha: 0.15) : Colors.grey.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isPaired ? Colors.green.withValues(alpha: 0.3) : Colors.grey.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _isPaired ? Colors.greenAccent : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _isPaired ? 'CANLI' : 'MANUEL',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w800,
+                        color: _isPaired ? Colors.greenAccent : Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (_isPaired) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    icon: const Icon(Icons.sync_rounded, size: 16),
+                    label: const Text('Senkronize Et', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.pinkAccent.withValues(alpha: 0.18),
+                      foregroundColor: Colors.pinkAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () async {
+                      final updated = await SoldierMatchService.instance.syncPairedSoldierData();
+                      if (updated && mounted) {
+                        await _loadProfileData();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Asker verileri başarıyla senkronize edildi! 💕'),
+                            backgroundColor: Colors.pinkAccent,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.link_off_rounded, size: 16),
+                    label: const Text('Eşleşmeyi Kaldır', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                      side: const BorderSide(color: Colors.redAccent),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => _confirmUnpair(),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.qr_code_rounded, size: 16),
+                label: const Text('Asker Takip Kodu Gir & Eşleş', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.pinkAccent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => _showPairingDialog(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmUnpair() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Eşleşmeyi Kaldır?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Asker takip kodunuz silinecek ve verileriniz manuel moda geçecektir. Onaylıyor musunuz?',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('İptal', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Eşleşmeyi Kaldır', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await SoldierMatchService.instance.unpairSoldier();
+      await _loadProfileData();
+      NotificationService().scheduleAllNotifications();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Eşleşme kaldırıldı. Manuel moddasınız.'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showPairingDialog() {
+    final controller = TextEditingController();
+    bool isLoading = false;
+    String? errorText;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: const Row(
+                children: [
+                  Icon(Icons.military_tech_rounded, color: Colors.pinkAccent),
+                  SizedBox(width: 8),
+                  Text('Asker Kodu ile Eşleş', style: TextStyle(color: Colors.white, fontSize: 18)),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Askerinizin size verdiği takip kodunu (örn: SFK-1234) giriniz:',
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: controller,
+                    textCapitalization: TextCapitalization.characters,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.5),
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.black26,
+                      hintText: 'SFK-XXXX',
+                      hintStyle: const TextStyle(color: Colors.white30),
+                      errorText: errorText,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.pinkAccent, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('İptal', style: TextStyle(color: Colors.white60)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.pinkAccent),
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          final code = controller.text.trim();
+                          if (code.isEmpty) {
+                            setDialogState(() => errorText = 'Lütfen bir kod girin');
+                            return;
+                          }
+                          setDialogState(() {
+                            isLoading = true;
+                            errorText = null;
+                          });
+                          final soldier = await SoldierMatchService.instance.getSoldierByTrackingCode(code);
+                          if (soldier == null) {
+                            setDialogState(() {
+                              isLoading = false;
+                              errorText = 'Asker bulunamadı. Kodu kontrol edin.';
+                            });
+                            return;
+                          }
+                          final prefs = await SharedPreferences.getInstance();
+                          await SoldierMatchService.instance.pairWithSoldier(
+                            code: code,
+                            relationship: (_relationship != null && _relationship!.isNotEmpty)
+                                ? _relationship!
+                                : 'es',
+                            followerName: prefs.getString('follower_name') ?? 'Yakını',
+                          );
+                          if (dialogCtx.mounted) {
+                            Navigator.of(dialogCtx).pop();
+                          }
+                          await _loadProfileData();
+                          NotificationService().scheduleAllNotifications();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('${soldier['name']} ${soldier['surname']} ile başarıyla eşleşildi! 💕'),
+                                backgroundColor: Colors.pinkAccent,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Eşleş', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showFollowersModal(String trackingCode) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: SoldierMatchService.instance.getFollowers(trackingCode),
+          builder: (context, snapshot) {
+            final followers = snapshot.data ?? [];
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.people_alt_rounded, color: Colors.blueAccent),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Şafağını Takip Edenler (${followers.length})',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  if (snapshot.connectionState == ConnectionState.waiting)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else if (followers.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      alignment: Alignment.center,
+                      child: Column(
+                        children: [
+                          Icon(Icons.person_add_rounded, color: Colors.white.withValues(alpha: 0.3), size: 40),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Henüz seni takip eden kimse yok.\nTakip kodunu eşine, sevgiline veya ailene vererek anlık takip ettirebilirsin!',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 13,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: followers.length,
+                        separatorBuilder: (_, __) => const Divider(color: Colors.white12),
+                        itemBuilder: (context, index) {
+                          final f = followers[index];
+                          final name = f['name'] ?? 'Yakını';
+                          final rel = f['relationship'] ?? '';
+                          final relLabel = SoldierMatchService.getRelationshipLabel(rel);
+                          final icon = SoldierMatchService.getRelationshipIcon(rel);
+
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.pinkAccent.withValues(alpha: 0.2),
+                              child: Icon(icon, color: Colors.pinkAccent, size: 20),
+                            ),
+                            title: Text(
+                              name,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              relLabel,
+                              style: const TextStyle(color: Colors.white60, fontSize: 12),
+                            ),
+                            trailing: const Icon(Icons.check_circle_rounded, color: Colors.greenAccent, size: 18),
+                          );
+                        },
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -347,26 +1328,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           children: [
             _buildIDCard(),
-            const SizedBox(height: 8),
+
+            // Soldier Share Code or Relative Sync banner
+            if (_userRole == 'asker')
+              _buildSoldierTrackingManagementCard()
+            else if (_userRole == 'yakin')
+              _buildRelativeTrackingManagementCard(),
+
+            // Featured Full-Row Military Themes Showcase Banner
+            _buildThemeChangeTile(),
+
+            const SizedBox(height: 4),
 
             _buildSectionHeader('Hesap & Ayarlar'),
             _buildListTile(
               icon: Icons.edit_note,
-              title: 'Bilgileri Güncelle',
+              title: _userRole == 'yakin'
+                  ? (_isPaired ? 'Asker Bilgilerini Görüntüle' : 'Asker Bilgilerini Düzenle')
+                  : 'Bilgileri Güncelle',
               iconColor: Colors.blue,
               onTap: () async {
                 await Navigator.of(context).push(_customPageRoute(UserInputPage(), 'UserInputPage'));
-                _loadProfileData();
-              },
-            ),
-            _buildListTile(
-              icon: Icons.palette_outlined,
-              title: 'Arka Plan Değiştir',
-              iconColor: Colors.purple,
-              onTap: () async {
-                await Navigator.of(context).push(_customPageRoute(ThemePage(), 'ThemePage'));
-                _loadProfileData();
-                AdManager().loadInterstitialAd();
+                await _loadProfileData();
+                SoldierMatchService.instance.notifyDataChanged(pairingChanged: true);
               },
             ),
             _buildNotificationTimeTile(),
@@ -476,7 +1460,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 await _deleteAccount();
               },
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 120),
           ],
         ),
       ),
@@ -600,6 +1584,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'deleted_at': FieldValue.serverTimestamp(),
       });
 
+      // Unpair if paired
+      if (_userRole == 'yakin' && _isPaired) {
+        await SoldierMatchService.instance.unpairSoldier();
+      }
+
       // Clear local SharedPreferences
       await prefs.clear();
 
@@ -607,11 +1596,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Pop loading dialog
         Navigator.of(context).pop();
 
-        // Redirect to UserInputPage (information entry screen)
+        // Redirect to WelcomeRolePage (welcome & role selection screen)
         await Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(
-            settings: const RouteSettings(name: 'UserInputPage'),
-            builder: (context) => const UserInputPage(),
+            settings: const RouteSettings(name: 'WelcomeRolePage'),
+            builder: (context) => const WelcomeRolePage(),
           ),
           (Route<dynamic> route) => false,
         );
@@ -647,6 +1636,382 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         return SlideTransition(position: offsetAnimation, child: child);
       },
+    );
+  }
+
+  // ─── Askeri Temalar Kullan (Full-Row Featured Showcase Banner) ───────────
+
+  Widget _buildThemeChangeTile() {
+    final activeItem = ThemeCatalog.items.cast<ThemeItem?>().firstWhere(
+          (item) => item?.assetPath == widget.backgroundImage,
+          orElse: () => null,
+        );
+    final String activeTitle = activeItem?.title ?? 'Klasik Aydınlık';
+    final String centerPreviewAsset = !_isDefaultTheme
+        ? widget.backgroundImage
+        : 'assets/images/img12.webp';
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: RevenueCatService.instance.isPremiumNotifier,
+      builder: (context, isPremium, _) {
+        final Color accentColor =
+            isPremium ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: accentColor.withValues(alpha: 0.65),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: accentColor.withValues(alpha: _isDefaultTheme ? 0.20 : 0.26),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: _isDefaultTheme ? 0.12 : 0.35),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(22.5),
+            child: Stack(
+              children: [
+                // 1. Deep Tactical Full-Row Gradient Base
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF0B1120),
+                          Color(0xFF1E1B4B),
+                          Color(0xFF172554),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 2. Subtle Blended Flag/Sky Texture on Right Side
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 185,
+                  child: Opacity(
+                    opacity: 0.22,
+                    child: Image.asset(
+                      'assets/images/img13.webp',
+                      fit: BoxFit.cover,
+                      cacheWidth: 360,
+                    ),
+                  ),
+                ),
+
+                // 3. Smooth Left-to-Right Scrim so Typography Pops
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          const Color(0xFF0B1120).withValues(alpha: 0.96),
+                          const Color(0xFF131836).withValues(alpha: 0.86),
+                          const Color(0xFF0B1120).withValues(alpha: 0.45),
+                        ],
+                        stops: const [0.0, 0.58, 1.0],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 4. Ambient Accent Glow Behind Card Fan
+                Positioned(
+                  right: -18,
+                  top: -18,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          accentColor.withValues(alpha: 0.28),
+                          accentColor.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 5. Interactive Content Row
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () async {
+                      HapticFeedback.lightImpact();
+                      await Navigator.of(context).push(
+                        _customPageRoute(const ThemePage(), 'ThemePage'),
+                      );
+                      _loadProfileData();
+                      AdManager().loadInterstitialAd();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
+                      child: Row(
+                        children: [
+                          // Left Copy & CTA
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Top PRO Ribbon Pill
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: isPremium
+                                          ? [
+                                              const Color(0xFF10B981),
+                                              const Color(0xFF059669),
+                                            ]
+                                          : [
+                                              const Color(0xFFFFD700),
+                                              const Color(0xFFF59E0B),
+                                            ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        isPremium
+                                            ? Icons.verified_rounded
+                                            : Icons.workspace_premium_rounded,
+                                        size: 11,
+                                        color: isPremium
+                                            ? Colors.white
+                                            : const Color(0xFF1F1600),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isPremium
+                                            ? 'PRO AKTİF • 30 TEMA'
+                                            : 'PRO ÖZEL • 30 TEMA',
+                                        style: TextStyle(
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w900,
+                                          color: isPremium
+                                              ? Colors.white
+                                              : const Color(0xFF1F1600),
+                                          letterSpacing: 0.6,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 9),
+
+                                // Magnetic Main Title
+                                const Text(
+                                  'Askeri Temalar Kullan',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 4),
+
+                                // Subtitle
+                                Text(
+                                  !_isDefaultTheme
+                                      ? 'Aktif: $activeTitle • Diğer temaları dene'
+                                      : 'Al Sancak, JÖH ve Bordo Bereli duvar kağıtlarıyla ekranını özelleştir.',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFFCBD5E1),
+                                    fontSize: 11.5,
+                                    height: 1.32,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 11),
+
+                                // Bottom Mini CTA Pill
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: accentColor.withValues(alpha: 0.16),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: accentColor.withValues(alpha: 0.42),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.visibility_rounded,
+                                        size: 13,
+                                        color: isPremium
+                                            ? const Color(0xFF34D399)
+                                            : const Color(0xFFFDE047),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'Canlı Önizle & Seç',
+                                        style: TextStyle(
+                                          color: isPremium
+                                              ? const Color(0xFF34D399)
+                                              : const Color(0xFFFDE047),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Icon(
+                                        Icons.arrow_forward_rounded,
+                                        size: 13,
+                                        color: isPremium
+                                            ? const Color(0xFF34D399)
+                                            : const Color(0xFFFDE047),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const SizedBox(width: 12),
+
+                          // Right 3-Card Fanned Wallpaper Preview Deck
+                          SizedBox(
+                            width: 92,
+                            height: 88,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              clipBehavior: Clip.none,
+                              children: [
+                                // Left Angled Card (Bordo Bereliler)
+                                Positioned(
+                                  left: 2,
+                                  top: 10,
+                                  child: Transform.rotate(
+                                    angle: -0.20,
+                                    child: _buildMiniWallpaperThumb(
+                                      assetPath: 'assets/images/img3.webp',
+                                      width: 44,
+                                      height: 66,
+                                      borderColor: Colors.white.withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                ),
+
+                                // Right Angled Card (JÖH)
+                                Positioned(
+                                  right: 2,
+                                  top: 10,
+                                  child: Transform.rotate(
+                                    angle: 0.20,
+                                    child: _buildMiniWallpaperThumb(
+                                      assetPath: 'assets/images/img19.webp',
+                                      width: 44,
+                                      height: 66,
+                                      borderColor: Colors.white.withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                ),
+
+                                // Center Hero Card (Al Bayrak / Active Theme)
+                                Positioned(
+                                  top: 4,
+                                  child: _buildMiniWallpaperThumb(
+                                    assetPath: centerPreviewAsset,
+                                    width: 50,
+                                    height: 76,
+                                    borderColor: isPremium
+                                        ? const Color(0xFF34D399)
+                                        : const Color(0xFFFFD700),
+                                    borderWidth: 1.8,
+                                    hasGlow: true,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMiniWallpaperThumb({
+    required String assetPath,
+    required double width,
+    required double height,
+    required Color borderColor,
+    double borderWidth = 1.1,
+    bool hasGlow = false,
+  }) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor, width: borderWidth),
+        boxShadow: [
+          BoxShadow(
+            color: hasGlow
+                ? Colors.black.withValues(alpha: 0.55)
+                : Colors.black.withValues(alpha: 0.35),
+            blurRadius: hasGlow ? 10 : 6,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8.5),
+        child: Image.asset(
+          assetPath,
+          fit: BoxFit.cover,
+          cacheWidth: 180,
+        ),
+      ),
     );
   }
 
