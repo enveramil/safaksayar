@@ -198,6 +198,16 @@ class _ManagePagesState extends State<ManagePages> with WidgetsBindingObserver {
             }
           });
         }
+
+        // Anlık Zorunlu PRO Ekranı kontrolü:
+        // Eğer veritabanından isNecessaryProScreen == true set edilirse ve kullanıcı PRO değilse (asker yakını hariç)
+        // anında zorunlu PRO ekranını önüne getir!
+        final isNecessary = data['isNecessaryProScreen'] as bool? ?? false;
+        if (isNecessary && !RevenueCatService.instance.isPremium && _userRole != 'yakin') {
+          if (mounted && ModalRoute.of(context)?.isCurrent == true) {
+            PremiumPaywallPage.show(context, source: 'remote_config_enforce', isGate: true);
+          }
+        }
       }
     });
   }

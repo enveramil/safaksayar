@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:safaksayar/ads/ad_manager.dart';
 import 'package:safaksayar/pages/onboarding_showcase_page.dart';
+import 'package:safaksayar/pages/premium_paywall_page.dart';
 import 'package:safaksayar/pages/splash.dart';
 import 'package:safaksayar/pages/welcome_role_page.dart';
 import 'package:safaksayar/state_bottom_bar.dart';
@@ -18,6 +19,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'Services/fcm_service.dart';
 import 'Services/revenue_cat_service.dart';
 import 'Services/soldier_match_service.dart';
+import 'Services/app_config_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,6 +70,18 @@ Widget _resolveInitialScreen(SharedPreferences prefs) {
       surname != null &&
       askerlikYeri != null &&
       memleket != null) {
+    // Dinamik PRO Kapısı Kontrolü:
+    // Firestore'da isNecessaryProScreen == true ise, PRO olmayan kullanıcılar uygulamayı kullanamaz.
+    // isNecessaryProScreen == false ise veya kullanıcı PRO/yakın ise ücretsiz kullanabilir.
+    final bool isPremium = prefs.getBool('is_premium_active') ?? false;
+    final String? userRole = prefs.getString('user_role');
+    final bool isRelative = userRole == 'yakin';
+    final bool isNecessaryPro = prefs.getBool('isNecessaryProScreen') ?? false;
+
+    if (!isPremium && !isRelative && isNecessaryPro) {
+      return const PremiumPaywallPage(source: 'app_launch_gate', isGate: true);
+    }
+
     final String themeImage =
         prefs.getString('themeImage') ?? 'assets/images/img0.webp';
     return ManagePages(backgroundImage: themeImage);
@@ -81,16 +95,17 @@ Future<void> _bootstrapBackgroundServices(SharedPreferences prefs) async {
   unawaited(MobileAds.instance.initialize());
   unawaited(LogService.instance.init());
   unawaited(RevenueCatService.instance.init());
+  unawaited(AppConfigService.instance.init());
   unawaited(AdManager.fetchAdConfig());
-  unawaited(FCMService().init());
-  unawaited(
-    NotificationService().init().then((_) {
-      NotificationService().requestPermissions();
-    }),
-  );
+
+  // Onboarding tamamlanmamışsa bildirim izni isteme; onboarding tamamlandığında istenecek
+  final bool onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+  if (onboardingCompleted) {
+    unawaited(FCMService().init());
+    unawaited(NotificationService().init());
+  }
 
   // Mevcut kullanıcı verilerini arka planda sessizce eşitle
-  final bool onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
   final String? name = prefs.getString('name');
   final String? surname = prefs.getString('surname');
   final String? askerlikYeri = prefs.getString('askerlik_yeri');

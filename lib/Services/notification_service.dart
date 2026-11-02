@@ -52,12 +52,12 @@ class NotificationService {
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/launcher_icon');
 
-    // iOS: request all permissions AND show notifications in foreground
+    // iOS: izin istemeyi FCMService'e bırak (çift izin modalını önle), ön planda sunumu aktif tut
     final DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
       // ✅ These make notifications appear even when app is open (foreground)
       defaultPresentAlert: true,
       defaultPresentBadge: true,

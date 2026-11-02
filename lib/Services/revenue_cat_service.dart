@@ -59,6 +59,24 @@ class RevenueCatService {
   bool get hasVerifiedStatus => _hasVerifiedStatus;
   bool get isUserRelative => _isUserRelative;
 
+  /// Aktif aboneliğin bitiş / yenileme tarihi (süresiz üyeliklerde null).
+  DateTime? get premiumExpiresAt {
+    final info = _latestCustomerInfo;
+    return _parseAnyDate(
+          _extractRelevantEntitlement(info)?.expirationDate ??
+              info?.latestExpirationDate,
+        ) ??
+        _parseAnyDate(_latestFirestoreUserData?['premiumExpiresAt']);
+  }
+
+  bool get isOnFreeTrial =>
+      _extractRelevantEntitlement(_latestCustomerInfo)?.periodType ==
+      PeriodType.trial;
+
+  bool get premiumWillRenew =>
+      _extractRelevantEntitlement(_latestCustomerInfo)?.willRenew ??
+      _latestFirestoreUserData?['premiumWillRenew'] == true;
+
   /// Uygulama ilk kareyi çizmeden önce önbellekteki PRO durumunu senkron yükler (0ms gecikme).
   /// Asker yakını rolündeki kullanıcılara tüm PRO özellikler doğrudan ve ücretsiz tanımlanır.
   void primeFromPrefs(SharedPreferences prefs) {

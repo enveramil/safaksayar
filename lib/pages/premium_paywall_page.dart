@@ -1,31 +1,46 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:safaksayar/Services/revenue_cat_service.dart';
+import 'package:safaksayar/Services/app_config_service.dart';
+import 'package:safaksayar/pages/pro_welcome_page.dart';
+import 'package:safaksayar/state_bottom_bar.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-/// Ultra-professional, Keynote-style Paywall Screen.
-/// Strictly ZERO gradients, ZERO text walls.
-/// Sequentially showcases each killer feature:
-/// 1. First, the feature's tactile visual comes to life / animates.
-/// 2. Then, the punchy impactful text smoothly slides up.
-/// Includes interactive progress segments and instant tap-to-switch.
+/// Ultra-High Converting, Keynote-style Mandatory PRO Paywall Screen.
+/// Features a photorealistic iPhone chassis with live interactive simulations
+/// of the app's killer features (Dual Sync, Lock Screen Widget, Time Capsule,
+/// 4K Military Themes, Live Duel Arena, and 100% Ad-Free experience).
 class PremiumPaywallPage extends StatefulWidget {
   final String source;
+  final bool isGate;
 
   const PremiumPaywallPage({
     super.key,
     this.source = 'general',
+    this.isGate = false,
   });
 
-  static Future<void> show(BuildContext context, {String source = 'general'}) {
+  static Future<void> show(
+    BuildContext context, {
+    String source = 'general',
+    bool isGate = false,
+  }) {
+    // Zaten PRO olan üyeye satış ekranı yerine üyelik özeti gösterilir
+    final revenueCat = RevenueCatService.instance;
+    if (revenueCat.isPremium && !revenueCat.isUserRelative) {
+      return ProWelcomePage.show(context, celebrate: false);
+    }
+
     return Navigator.push(
       context,
       MaterialPageRoute(
         settings: const RouteSettings(name: 'PremiumPaywallPage'),
-        builder: (_) => PremiumPaywallPage(source: source),
+        builder: (_) => PremiumPaywallPage(source: source, isGate: isGate),
       ),
     );
   }
@@ -37,11 +52,39 @@ class PremiumPaywallPage extends StatefulWidget {
 class _PremiumPaywallPageState extends State<PremiumPaywallPage>
     with TickerProviderStateMixin {
   int _currentFeatureIndex = 0;
-  int _selectedPlanIndex = 0; // 0: Annual (3-day trial), 1: Monthly
+  int _selectedPlanIndex = 0; // 0: Annual (3-day free trial), 1: Monthly
+  int _selectedThemePreviewIndex = 0;
   bool _isProcessing = false;
+  bool _isShowingProWelcome = false;
+
+  final List<Map<String, String>> _previewThemes = const [
+    {
+      'title': 'Bordo Bereli',
+      'tag': '4K HD',
+      'image': 'assets/images/img3.webp',
+      'detail': 'Bordo Bereliler Özel Kuvvet Teması',
+    },
+    {
+      'title': 'JÖH Komando',
+      'tag': '4K HD',
+      'image': 'assets/images/img19.webp',
+      'detail': 'Jandarma Özel Harekât Çelik Bakış',
+    },
+    {
+      'title': 'Şanlı Bayrak',
+      'tag': '4K HD',
+      'image': 'assets/images/img12.webp',
+      'detail': 'Dolmabahçe Şanlı Al Bayrak Teması',
+    },
+  ];
 
   Package? _annualPackage;
   Package? _monthlyPackage;
+
+  // Real-time Firestore & AppConfigService subscriptions for dynamic paywall gate
+  StreamSubscription<DocumentSnapshot>? _firestoreConfigSub;
+  StreamSubscription<bool>? _appConfigSub;
+  late bool _isNecessaryProScreen;
 
   // Master sequence controller for the feature stage
   late AnimationController _sequenceController;
@@ -50,44 +93,69 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
   late Animation<double> _textFade;
   late Animation<Offset> _textSlide;
 
-  // Secondary micro-loop controllers
-  late AnimationController _waveLoopController;
-  late AnimationController _pulseLoopController;
+  // Micro-loops for living animations
+  late AnimationController _pulseController;
+  late AnimationController _waveController;
+  late AnimationController _radarController;
 
-  Timer? _autoPlayTimer;
   Timer? _secondsTimer;
   int _syncSeconds = 7200 + 845; // 02:14:05
+
+  // User details dynamically read from device prefs to personalize the preview!
+  String _userName = 'Mehmet';
+  String _userRank = 'Er';
+  String _userDutyLocation = 'Şırnak';
+  String _userHometown = 'Adana';
+  String _trackingCode = 'SFK-3584';
 
   final List<Map<String, dynamic>> _features = [
     {
       'tag': 'ÇİFT SENKRONİZASYONU',
       'headline': 'Aynı Şafak, Aynı Kalp.',
       'sub': 'Mesafeler sıfırlanır; kalan her saniye ikinizde anlık eşleşir.',
+      'pillIcon': Icons.favorite_rounded,
+      'pillTitle': 'Çift Eşleşmesi',
+      'glowColor': const Color(0xFFE11D48),
+    },
+    {
+      'tag': 'KİLİT EKRANI WİDGETI',
+      'headline': 'Kilit Ekranında Canlı Şafak.',
+      'sub': 'Uygulamayı açmadan telefon ekranında her an yanında hisset.',
+      'pillIcon': Icons.widgets_rounded,
+      'pillTitle': 'Canlı Widget',
+      'glowColor': const Color(0xFF06B6D4),
     },
     {
       'tag': 'ZAMAN KAPSÜLÜ',
       'headline': 'O Gün Gelene Kadar Sır.',
       'sub': 'İstediğin tarihe ses ve fotoğraf mühürle; o gün gelince açılsın.',
+      'pillIcon': Icons.lock_clock_rounded,
+      'pillTitle': 'Zaman Kapsülü',
+      'glowColor': const Color(0xFFF59E0B),
+    },
+    {
+      'tag': 'ÖZEL FOTOĞRAF & TEMALAR',
+      'headline': 'Kendi Fotoğrafın & 4K Temalar.',
+      'sub': 'Şafak kartına sevdiğinin fotoğrafını koy veya askeri kamuflajla donat.',
+      'pillIcon': Icons.palette_rounded,
+      'pillTitle': '4K Temalar',
+      'glowColor': const Color(0xFF84CC16),
+    },
+    {
+      'tag': '1v1 ASKER DÜELLOSU',
+      'headline': 'Kışlanın Lideri Sen Ol.',
+      'sub': 'Limitsiz canlı düello hakkı, lider tablosunda VIP altın taç rozet.',
+      'pillIcon': Icons.military_tech_rounded,
+      'pillTitle': 'Canlı Düello',
+      'glowColor': const Color(0xFF8B5CF6),
     },
     {
       'tag': 'SIFIR REKLAM',
       'headline': 'Sıfır Reklam, Saf Huzur.',
-      'sub': 'Hiçbir reklam ve bekleme olmadan sadece anılarına odaklan.',
-    },
-    {
-      'tag': '1v1 DÜELLO',
-      'headline': 'Kışlanın Lideri Sen Ol.',
-      'sub': 'Limitsiz canlı düello hakkı ve lider tablosunda VIP rozet.',
-    },
-    {
-      'tag': 'KİLİT WIDGETI',
-      'headline': 'Kilit Ekranında Canlı Şafak.',
-      'sub': 'Uygulamayı açmadan telefon ekranında her an yanında hisset.',
-    },
-    {
-      'tag': 'ÖZEL FOTOĞRAF & TEMALAR',
-      'headline': 'Kendi Fotoğrafın ve Özel Temalar.',
-      'sub': 'Şafak kartına sevdiğinin fotoğrafını koy veya askeri temalarla kişiselleştir.',
+      'sub': 'Hiçbir reklam ve bekleme olmadan sadece anılarına ve şafağına odaklan.',
+      'pillIcon': Icons.block_rounded,
+      'pillTitle': 'Sıfır Reklam',
+      'glowColor': const Color(0xFF10B981),
     },
   ];
 
@@ -121,60 +189,67 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
   @override
   void initState() {
     super.initState();
+    _isNecessaryProScreen = widget.isGate || AppConfigService.instance.isNecessaryProScreen;
+    _listenToLiveProConfig();
+    _loadUserData();
+
     if (widget.source.contains('theme') || widget.source.contains('photo')) {
-      _currentFeatureIndex = 5;
-    } else if (widget.source.contains('capsule')) {
-      _currentFeatureIndex = 1;
-    } else if (widget.source.contains('duel') || widget.source.contains('millionaire')) {
       _currentFeatureIndex = 3;
-    } else if (widget.source.contains('widget')) {
+    } else if (widget.source.contains('capsule')) {
+      _currentFeatureIndex = 2;
+    } else if (widget.source.contains('duel') || widget.source.contains('millionaire')) {
       _currentFeatureIndex = 4;
+    } else if (widget.source.contains('widget')) {
+      _currentFeatureIndex = 1;
     }
+
     _loadOfferings();
     RevenueCatService.instance.isPremiumNotifier.addListener(_onPremiumExternallyActivated);
 
-    // 1. Master Story Sequencer (4 seconds per feature)
+    // 1. Master Sequence Animation Controller (3.8 seconds per feature showcase)
     _sequenceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 3800),
     );
 
-    // Visual entrance: 0ms -> 600ms (0.0 -> 0.20)
     _visualFade = CurvedAnimation(
       parent: _sequenceController,
       curve: const Interval(0.0, 0.22, curve: Curves.easeOut),
     );
-    _visualScale = Tween<double>(begin: 0.88, end: 1.0).animate(
+    _visualScale = Tween<double>(begin: 0.94, end: 1.0).animate(
       CurvedAnimation(
         parent: _sequenceController,
-        curve: const Interval(0.0, 0.22, curve: Curves.easeOutBack),
+        curve: const Interval(0.0, 0.22, curve: Curves.easeOutCubic),
       ),
     );
 
-    // Text entrance (starts after visual brings it to life): 500ms -> 1000ms (0.16 -> 0.38)
     _textFade = CurvedAnimation(
       parent: _sequenceController,
       curve: const Interval(0.18, 0.38, curve: Curves.easeOut),
     );
-    _textSlide = Tween<Offset>(begin: const Offset(0, 0.35), end: Offset.zero).animate(
+    _textSlide = Tween<Offset>(begin: const Offset(0, 0.30), end: Offset.zero).animate(
       CurvedAnimation(
         parent: _sequenceController,
         curve: const Interval(0.18, 0.38, curve: Curves.easeOutCubic),
       ),
     );
 
-    // 2. Micro loops for living waveform and radar dot
-    _waveLoopController = AnimationController(
+    // 2. Micro loops
+    _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
 
-    _pulseLoopController = AnimationController(
+    _waveController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
 
-    // 3. Sequential automatic progression
+    _radarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat();
+
     _sequenceController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         _nextFeature();
@@ -183,20 +258,20 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
 
     _sequenceController.forward();
 
-    // 4. Live Clock Ticker
+    // 3. Live Clock Ticker
     _secondsTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
         setState(() {
           if (_syncSeconds > 0) {
             _syncSeconds--;
           } else {
-            _syncSeconds = 8000;
+            _syncSeconds = 7200 + 845;
           }
         });
       }
     });
 
-    // 5. Testimonial auto-cycle every 6 seconds
+    // 4. Testimonials auto-cycle
     _testimonialTimer = Timer.periodic(const Duration(seconds: 6), (_) {
       if (mounted) {
         setState(() {
@@ -206,13 +281,87 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
     });
   }
 
+  Future<void> _loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final name = prefs.getString('name');
+      final rank = prefs.getString('rutbe');
+      final location = prefs.getString('askerlik_yeri');
+      final city = prefs.getString('memleket');
+      final code = prefs.getString('tracking_code') ?? prefs.getString('paired_code');
+
+      if (mounted) {
+        setState(() {
+          if (name != null && name.trim().isNotEmpty) _userName = name.trim();
+          if (rank != null && rank.trim().isNotEmpty) _userRank = rank.trim();
+          if (location != null && location.trim().isNotEmpty) _userDutyLocation = location.trim();
+          if (city != null && city.trim().isNotEmpty) _userHometown = city.trim();
+          if (code != null && code.trim().isNotEmpty) _trackingCode = code.trim();
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _listenToLiveProConfig() {
+    // 1. Doğrudan Firestore parameter/config tablosundaki snapshot akışını dinle
+    _firestoreConfigSub = FirebaseFirestore.instance
+        .collection('parameter')
+        .doc('config')
+        .snapshots()
+        .listen((snap) {
+      if (!snap.exists || snap.data() == null) return;
+      final data = snap.data()!;
+      if (data.containsKey('isNecessaryProScreen')) {
+        final bool isNecessary = data['isNecessaryProScreen'] as bool? ?? false;
+        if (mounted && _isNecessaryProScreen != isNecessary) {
+          setState(() {
+            _isNecessaryProScreen = isNecessary;
+          });
+          debugPrint('[Paywall] Firestore canlı isNecessaryProScreen güncellendi: $isNecessary');
+        }
+      }
+    }, onError: (e) {
+      debugPrint('[Paywall] Firestore dinleme hatası: $e');
+    });
+
+    // 2. AppConfigService broadcast stream'ini de dinle
+    _appConfigSub = AppConfigService.instance.onNecessaryProScreenChanged.listen((isNecessary) {
+      if (mounted && _isNecessaryProScreen != isNecessary) {
+        setState(() {
+          _isNecessaryProScreen = isNecessary;
+        });
+      }
+    });
+  }
+
+  Future<void> _dismissPaywall() async {
+    HapticFeedback.lightImpact();
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      final themeImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'ManagePages'),
+            builder: (_) => ManagePages(backgroundImage: themeImage),
+          ),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _firestoreConfigSub?.cancel();
+    _appConfigSub?.cancel();
     RevenueCatService.instance.isPremiumNotifier.removeListener(_onPremiumExternallyActivated);
     _sequenceController.dispose();
-    _waveLoopController.dispose();
-    _pulseLoopController.dispose();
-    _autoPlayTimer?.cancel();
+    _pulseController.dispose();
+    _waveController.dispose();
+    _radarController.dispose();
     _secondsTimer?.cancel();
     _testimonialTimer?.cancel();
     super.dispose();
@@ -275,7 +424,47 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
 
   void _onPremiumExternallyActivated() {
     if (!mounted || _isProcessing) return;
-    if (RevenueCatService.instance.isPremium && Navigator.of(context).canPop()) {
+    if (RevenueCatService.instance.isPremium) {
+      _showProWelcomeAndContinue();
+    }
+  }
+
+  /// PRO karşılama ekranını gösterir; kullanıcı devam edince paywall akışını tamamlar.
+  /// Asker yakınları PRO'yu ücretsiz aldığı için karşılama ekranını görmez.
+  Future<void> _showProWelcomeAndContinue({
+    String? planLabel,
+    bool isRestore = false,
+  }) async {
+    if (!mounted || _isShowingProWelcome) return;
+    if (RevenueCatService.instance.isUserRelative) {
+      await _navigateToHomeOrClose();
+      return;
+    }
+
+    setState(() => _isShowingProWelcome = true);
+    await ProWelcomePage.show(context, planLabel: planLabel, isRestore: isRestore);
+    await _navigateToHomeOrClose();
+    if (mounted) setState(() => _isShowingProWelcome = false);
+  }
+
+  String get _selectedPlanLabel =>
+      _selectedPlanIndex == 0 ? 'Yıllık Plan' : 'Aylık Plan';
+
+  Future<void> _navigateToHomeOrClose() async {
+    if (!mounted) return;
+    if (widget.isGate) {
+      final prefs = await SharedPreferences.getInstance();
+      final themeImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            settings: const RouteSettings(name: 'ManagePages'),
+            builder: (_) => ManagePages(backgroundImage: themeImage),
+          ),
+          (route) => false,
+        );
+      }
+    } else if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
   }
@@ -289,20 +478,9 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
   Future<void> _handlePurchase() async {
     if (_isProcessing) return;
 
-    // Mevcutta aktif PRO / aboneliği olan kullanıcıdan tekrar ödeme isteme!
     if (RevenueCatService.instance.isPremium) {
       HapticFeedback.heavyImpact();
-      if (RevenueCatService.instance.isUserRelative) {
-        _showSuccessDialog(
-          title: "Asker Yakını Ayrıcalığı 💕",
-          message: "Tüm PRO özellikler asker yakınlarımıza özel olarak tamamen ücretsiz tanımlanmıştır. Keyifle kullanabilirsiniz!",
-        );
-      } else {
-        _showSuccessDialog(
-          title: "PRO Üyeliğiniz Aktif",
-          message: "Mevcut aboneliğiniz doğrulandı. Tekrar ödeme yapmanıza gerek olmadan tüm PRO özellikleriniz açıktır.",
-        );
-      }
+      _showProWelcomeAndContinue();
       return;
     }
 
@@ -326,12 +504,12 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
 
       if (result.status == PaywallPurchaseStatus.success) {
         HapticFeedback.heavyImpact();
-        _showSuccessDialog();
+        await _showProWelcomeAndContinue(planLabel: _selectedPlanLabel);
       } else if (result.status == PaywallPurchaseStatus.error) {
         _showErrorSnackBar(result.message ?? "İşlem tamamlanamadı.");
       }
     } else if (kDebugMode) {
-      // Debug / Simülatör Önizleme Modu (seçilen plana göre 1 ay veya 1 yıl süre tanımlar)
+      // Simulator / Debug Mode bypass
       setState(() => _isProcessing = true);
       await Future.delayed(const Duration(milliseconds: 600));
       final simulatedDuration = _selectedPlanIndex == 0
@@ -347,7 +525,7 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
       setState(() => _isProcessing = false);
 
       HapticFeedback.heavyImpact();
-      _showSuccessDialog();
+      await _showProWelcomeAndContinue(planLabel: _selectedPlanLabel);
     } else {
       _showErrorSnackBar(
         "Abonelik paketleri şu an yüklenemedi. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.",
@@ -367,67 +545,54 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
 
     if (result.status == PaywallPurchaseStatus.success) {
       HapticFeedback.heavyImpact();
-      _showSuccessDialog(
-        title: "Satın Alımlar Geri Yüklendi",
-        message: "Aboneliğiniz başarıyla aktif edildi.",
-      );
+      await _showProWelcomeAndContinue(isRestore: true);
     } else {
       _showErrorSnackBar(result.message ?? "Aktif abonelik bulunamadı.");
     }
   }
 
-  void _showSuccessDialog({
-    String title = "PRO Aktif Edildi",
-    String message = "Tüm ayrıcalıklar sınırsız olarak hesabınıza tanımlandı.",
-  }) {
+  void _showMandatoryGateDialog() {
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF16181F),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           side: const BorderSide(color: Color(0xFF282B37), width: 1),
         ),
-        title: Column(
+        title: const Row(
           children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 38),
-            const SizedBox(height: 12),
+            Icon(Icons.workspace_premium_rounded, color: Color(0xFFF59E0B), size: 24),
+            SizedBox(width: 8),
             Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-              ),
+              "Şafak Sayar PRO",
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ],
         ),
-        content: Text(
-          message,
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 13, height: 1.4),
+        content: const Text(
+          "Canlı sayaç, çift senkronizasyonu, kilit ekranı widget'ı ve özel askeri temalar PRO abonelik kapsamındadır.\n\nÜcretsiz deneyebilir, dilediğiniz an tek dokunuşla iptal edebilirsiniz.",
+          style: TextStyle(color: Color(0xFFB0B5C6), fontSize: 13, height: 1.45),
         ),
         actions: [
-          Center(
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pop(context);
-                },
-                child: const Text("Tamam", style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              SystemNavigator.pop();
+            },
+            child: const Text("Uygulamadan Çık", style: TextStyle(color: Color(0xFF787C8B))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handlePurchase();
+            },
+            child: const Text("Ücretsiz Dene", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -460,64 +625,90 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: Color(0xFF0C0D11),
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0C0D11),
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Top Bar
-              _buildTopBar(),
+    return PopScope(
+      canPop: !_isNecessaryProScreen,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_isNecessaryProScreen) {
+          _showMandatoryGateDialog();
+        } else {
+          _dismissPaywall();
+        }
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.light,
+          statusBarBrightness: Brightness.dark,
+          systemNavigationBarColor: Color(0xFF0C0D11),
+          systemNavigationBarIconBrightness: Brightness.light,
+        ),
+        child: Scaffold(
+          backgroundColor: const Color(0xFF0C0D11),
+          // Karşılama ekranından dönerken satış içeriği yeniden görünmesin
+          body: AnimatedOpacity(
+            opacity: _isShowingProWelcome ? 0 : 1,
+            duration: const Duration(milliseconds: 220),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Top Bar
+                  _buildTopBar(),
 
-              // Scrollable Content
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Subtle Tag & Brand
-                      _buildHeaderTag(),
+                  // Scrollable Content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // PRO Brand Pill
+                          _buildHeaderTag(),
 
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
-                      // Sequential Feature Showcase (Visual animates first, text follows)
-                      _buildCinematicFeatureStage(),
+                          // Interactive Scenario Switcher Bar (6 tabs)
+                          _buildScenarioPills(),
 
-                      const SizedBox(height: 14),
+                          const SizedBox(height: 12),
 
-                      // Real User Testimonial & Social Proof Card
-                      _buildUserTestimonialCard(),
+                          // The Killer Smartphone Live App Preview Stage!
+                          _buildLivePhoneMockupStage(),
 
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                      // Solid Plan Selector (Matte cards, zero gradients)
-                      _buildPlanSelector(),
+                          // Impactful Sequential Headline
+                          _buildFeatureHeadline(),
 
-                      const SizedBox(height: 16),
+                          const SizedBox(height: 14),
 
-                      // Solid Action Button (No gradient)
-                      _buildActionButton(),
+                          // Real User Social Proof Card
+                          _buildUserTestimonialCard(),
 
-                      const SizedBox(height: 10),
+                          const SizedBox(height: 16),
 
-                      // Minimal Sub-note & Links
-                      _buildFooter(),
+                          // Solid Plan Selector (Annual with 3-Day Free Trial vs Monthly)
+                          _buildPlanSelector(),
 
-                      const SizedBox(height: 16),
-                    ],
+                          const SizedBox(height: 16),
+
+                          // Primary Action Button
+                          _buildActionButton(),
+
+                          const SizedBox(height: 12),
+
+                          // Orderly Footer (Trial Note, EULA & Privacy, and Optional Free Dismiss)
+                          _buildFooter(),
+
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -529,32 +720,45 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
   // ==========================================
   Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
+          // ÇARPI BUTONU: isNecessaryProScreen == false ise kapatıp ücretsiz kullanmaya izin verir
+          if (!_isNecessaryProScreen)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _dismissPaywall,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
               ),
-              alignment: Alignment.center,
-              child: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
-            ),
-          ),
+            )
+          else
+            const SizedBox(width: 36),
           GestureDetector(
             onTap: _isProcessing ? null : _handleRestore,
-            child: const Text(
-              "Geri Yükle",
-              style: TextStyle(
-                color: Color(0xFF8E92A0),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: const Text(
+                "Satın Alımları Geri Yükle",
+                style: TextStyle(
+                  color: Color(0xFFB0B5C6),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -567,616 +771,1266 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
   // HEADER TAG
   // ==========================================
   Widget _buildHeaderTag() {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E2028),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: const Color(0xFF2E3240)),
-          ),
-          child: const Text(
-            "PRO AYRICALIKLARI",
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E2028),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFF2E3240)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.stars_rounded, color: Color(0xFFF59E0B), size: 14),
+          SizedBox(width: 5),
+          Text(
+            "ŞAFAK SAYAR PRO • TÜM AYRICALIKLAR",
             style: TextStyle(
               color: Colors.white,
-              fontSize: 10.5,
+              fontSize: 10,
               fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
+              letterSpacing: 0.8,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // INTERACTIVE SCENARIO PILLS (6 TABS)
+  // ==========================================
+  Widget _buildScenarioPills() {
+    return SizedBox(
+      height: 32,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: _features.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          final item = _features[index];
+          final bool isSelected = index == _currentFeatureIndex;
+          final Color glow = item['glowColor'] as Color;
+
+          return GestureDetector(
+            onTap: () => _goToFeature(index),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 240),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? glow.withValues(alpha: 0.18)
+                    : const Color(0xFF14161E),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isSelected ? glow.withValues(alpha: 0.8) : const Color(0xFF222633),
+                  width: isSelected ? 1.4 : 1.0,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    item['pillIcon'] as IconData,
+                    size: 13,
+                    color: isSelected ? Colors.white : const Color(0xFF787E92),
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    item['pillTitle'] as String,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : const Color(0xFF8E94A6),
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ==========================================
+  // LIVE SMARTPHONE MOCKUP STAGE
+  // ==========================================
+  Widget _buildLivePhoneMockupStage() {
+    final activeFeature = _features[_currentFeatureIndex];
+    final Color accentGlow = activeFeature['glowColor'] as Color;
+
+    return Center(
+      child: ScaleTransition(
+        scale: _visualScale,
+        child: FadeTransition(
+          opacity: _visualFade,
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(maxWidth: 340),
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              // Multi-layered luxury ambient aura
+              boxShadow: [
+                BoxShadow(
+                  color: accentGlow.withValues(alpha: 0.22),
+                  blurRadius: 36,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Container(
+              // Realistic iPhone 16 Pro chassis
+              height: 226,
+              decoration: BoxDecoration(
+                color: const Color(0xFF090A0E),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: const Color(0xFF2E3342), width: 2.2),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(23),
+                child: Stack(
+                  children: [
+                    // Glass specular highlight reflection overlay
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.05),
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.4),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Phone Status Bar & Dynamic Island
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _buildPhoneStatusBar(accentGlow),
+                    ),
+
+                    // Scenario Screen Content
+                    Positioned(
+                      top: 36,
+                      left: 12,
+                      right: 12,
+                      bottom: 8,
+                      child: _buildScenarioContent(_currentFeatureIndex),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // PHONE STATUS BAR & DYNAMIC ISLAND
+  // ==========================================
+  Widget _buildPhoneStatusBar(Color accent) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            "09:41",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.2,
+            ),
+          ),
+
+          // Dynamic Island Capsule
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+            decoration: BoxDecoration(
+              color: Colors.black,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: accent.withValues(alpha: 0.4), width: 0.8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                const Text(
+                  "Şafak Sayar PRO",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Row(
+            children: [
+              Icon(Icons.signal_cellular_4_bar_rounded, color: Colors.white70, size: 10),
+              SizedBox(width: 3),
+              Icon(Icons.wifi_rounded, color: Colors.white70, size: 10),
+              SizedBox(width: 3),
+              Icon(Icons.battery_full_rounded, color: Colors.white70, size: 11),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // 6 SCENARIOS INSIDE THE PHONE CHASSIS
+  // ==========================================
+  Widget _buildScenarioContent(int index) {
+    switch (index) {
+      case 0:
+        return _buildDualSyncSimulation();
+      case 1:
+        return _buildLockScreenWidgetSimulation();
+      case 2:
+        return _buildTimeCapsuleSimulation();
+      case 3:
+        return _buildThemesAndPhotoSimulation();
+      case 4:
+        return _buildDuelArenaSimulation();
+      case 5:
+        return _buildZeroAdsComparisonSimulation();
+      default:
+        return _buildDualSyncSimulation();
+    }
+  }
+
+  // SCENARIO 0: LIVE DUAL SYNC (CANLI ÇİFT EŞLEŞMESİ)
+  Widget _buildDualSyncSimulation() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Live Heartbeat Row
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            // Soldier Card
+            _buildMiniProfile(
+              icon: Icons.military_tech_rounded,
+              iconColor: const Color(0xFFF59E0B),
+              name: "$_userRank $_userName",
+              location: _userDutyLocation,
+              label: "ASKER (SEN)",
+            ),
+
+            // Animated Pulse Beam
+            Column(
+              children: [
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (_, __) {
+                    final v = _pulseController.value;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.15 + 0.15 * v),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4 + 0.4 * v)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.sync_rounded, size: 9, color: Color(0xFF10B981)),
+                          SizedBox(width: 3),
+                          Text(
+                            "0 MS CANLI",
+                            style: TextStyle(
+                              color: Color(0xFF10B981),
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 4),
+                // ECG Heartbeat line simulation
+                SizedBox(
+                  width: 58,
+                  height: 14,
+                  child: CustomPaint(
+                    painter: _EcWavePainter(progress: _pulseController.value),
+                  ),
+                ),
+                Text(
+                  _trackingCode,
+                  style: const TextStyle(
+                    color: Color(0xFF787C8B),
+                    fontSize: 8.5,
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+
+            // Lover / Relative Card
+            _buildMiniProfile(
+              icon: Icons.favorite_rounded,
+              iconColor: const Color(0xFFE11D48),
+              name: "Sevdiğin 💕",
+              location: _userHometown,
+              label: "YÂRİN (EŞLEŞTİ)",
+            ),
+          ],
+        ),
+
+        // Live Countdown Ticker Pill
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF161922),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF262B3A)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.timelapse_rounded, color: Color(0xFFF59E0B), size: 13),
+                  SizedBox(width: 4),
+                  Text(
+                    "KALAN ŞAFAK",
+                    style: TextStyle(color: Color(0xFF8E92A0), fontSize: 8.5, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              Text(
+                "48 Gün • ${_formatTime(_syncSeconds)}",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Toast message
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE11D48).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFE11D48).withValues(alpha: 0.25)),
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.favorite, color: Color(0xFFE11D48), size: 10),
+              SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  "Sevgilin şu an şafağına bakıyor • Canlı Senkronize",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Color(0xFFFF859B),
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 
-  // ==========================================
-  // CINEMATIC SEQUENTIAL FEATURE STAGE
-  // ==========================================
-  Widget _buildCinematicFeatureStage() {
-    final currentFeature = _features[_currentFeatureIndex];
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF14151B),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFF22242D)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Progress Step Indicators (Pills on top)
-          Row(
-            children: List.generate(_features.length, (index) {
-              final bool isCurrent = index == _currentFeatureIndex;
-              final bool isPast = index < _currentFeatureIndex;
-
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => _goToFeature(index),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: isCurrent
-                          ? Colors.white
-                          : (isPast ? const Color(0xFF4A4E5E) : const Color(0xFF22242D)),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
-
-          const SizedBox(height: 18),
-
-          // 2. STAGE VISUAL (Animates first!)
-          Center(
-            child: ScaleTransition(
-              scale: _visualScale,
-              child: FadeTransition(
-                opacity: _visualFade,
-                child: SizedBox(
-                  height: 110,
-                  child: Center(
-                    child: _buildStageVisual(_currentFeatureIndex),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // 3. IMPACTFUL TEXT (Slides up and reveals right after visual)
-          SlideTransition(
-            position: _textSlide,
-            child: FadeTransition(
-              opacity: _textFade,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF1F222B),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      currentFeature['tag'] as String,
-                      style: const TextStyle(
-                        color: Color(0xFF8E92A0),
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    currentFeature['headline'] as String,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      height: 1.18,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    currentFeature['sub'] as String,
-                    style: const TextStyle(
-                      color: Color(0xFF8E92A0),
-                      fontSize: 13,
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==========================================
-  // DYNAMIC STAGE VISUAL GENERATOR
-  // ==========================================
-  Widget _buildStageVisual(int index) {
-    switch (index) {
-      case 0:
-        // FEATURE 0: CANLI ÇİFT SENKRONİZASYONU
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+  // SCENARIO 1: LIVE LOCK SCREEN WIDGET
+  Widget _buildLockScreenWidgetSimulation() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // iOS Lock Screen Clock
+        const Column(
           children: [
-            _buildAvatarPill(Icons.military_tech_rounded, "ASKER"),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+            Text(
+              "09:41",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 32,
+                fontWeight: FontWeight.w200,
+                height: 1.0,
+                letterSpacing: -1.0,
+              ),
+            ),
+            Text(
+              "Pazar, 1 Kasım",
+              style: TextStyle(
+                color: Color(0xFFB0B5C6),
+                fontSize: 9.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+
+        // Frosted Glassmorphic iOS 18 Lock Screen Widget
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E2333).withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF38405A)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  AnimatedBuilder(
-                    animation: _pulseLoopController,
-                    builder: (context, child) {
-                      return Row(
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: Color(0xFF10B981)
-                                  .withValues(alpha: 0.3 + 0.7 * _pulseLoopController.value),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            "CANLI",
-                            style: TextStyle(
-                              color: Color(0xFF10B981),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.shield_rounded, color: Color(0xFF06B6D4), size: 12),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            "$_userRank $_userName".toUpperCase(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
                               fontSize: 9.5,
                               fontWeight: FontWeight.w800,
-                              letterSpacing: 1.0,
                             ),
                           ),
-                        ],
-                      );
-                    },
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Container(
-                    width: 70,
-                    height: 2,
-                    color: const Color(0xFF2C303E),
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(width: 6),
                   Text(
-                    _formatTime(_syncSeconds),
+                    "Doğan Güneş: $_userHometown",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF06B6D4),
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
-            ),
-            _buildAvatarPill(Icons.favorite_rounded, "SEVDİĞİN"),
-          ],
-        );
-
-      case 1:
-        // FEATURE 1: KİLİTLİ ZAMAN KAPSÜLÜ
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1C24),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF2C303E)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF222530),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.lock_rounded, color: Colors.white, size: 18),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 6),
+              // Progress Bar
+              Stack(
                 children: [
-                  const Text(
-                    "SES KAYDI VE FOTOĞRAF",
-                    style: TextStyle(
-                      color: Color(0xFF8E92A0),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
+                  Container(
+                    height: 5,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10141E),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  AnimatedBuilder(
-                    animation: _waveLoopController,
-                    builder: (context, child) {
-                      final v = _waveLoopController.value;
-                      return Row(
-                        children: [
-                          _buildWaveBar(6 + 10 * v),
-                          const SizedBox(width: 3),
-                          _buildWaveBar(18 - 10 * v),
-                          const SizedBox(width: 3),
-                          _buildWaveBar(8 + 12 * ((v + 0.3) % 1.0)),
-                          const SizedBox(width: 3),
-                          _buildWaveBar(16 - 12 * ((v + 0.6) % 1.0)),
-                          const SizedBox(width: 3),
-                          _buildWaveBar(10 + 8 * v),
-                          const SizedBox(width: 8),
-                          const Text(
-                            "0:18",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
+                  Container(
+                    height: 5,
+                    width: 170,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF06B6D4), Color(0xFF3B82F6)],
+                      ),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 5),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Şafak: 48 Gün • %74 Tamamlandı",
+                    style: TextStyle(color: Color(0xFF9EABB9), fontSize: 8, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    "PRO Widget",
+                    style: TextStyle(color: Color(0xFF06B6D4), fontSize: 8, fontWeight: FontWeight.w800),
                   ),
                 ],
               ),
             ],
           ),
-        );
-
-      case 2:
-        // FEATURE 2: SIFIR REKLAM
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1A1C24),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFF2C303E)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF222530),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.block_rounded, color: Color(0xFFEF4444), size: 22),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "0 REKLAM",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    "Kesintisiz arayüz aktif",
-                    style: TextStyle(
-                      color: Color(0xFF8E92A0),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-
-      case 3:
-        // FEATURE 3: SINIRSIZ DÜELLO
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1C24),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF2C303E)),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.military_tech_rounded, color: Color(0xFFFFD700), size: 24),
-                  SizedBox(width: 8),
-                  Text(
-                    "VIP #1",
-                    style: TextStyle(
-                      color: Color(0xFFFFD700),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E2028),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFF2C303E)),
-              ),
-              child: const Text(
-                "⚔️ 1v1 LİMİTSİZ",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ],
-        );
-
-      case 4:
-        // FEATURE 4: KİLİT EKRANI WİDGETI
-        return Container(
-          width: 200,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E2028),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF2C303E)),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: const BoxDecoration(
-                  color: Color(0xFF282B37),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.widgets_rounded, color: Colors.white, size: 16),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    "ŞAFAK SAYAR",
-                    style: TextStyle(
-                      color: Color(0xFF8E92A0),
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Text(
-                    "KALAN: 45 GÜN",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-
-      case 5:
-      default:
-        // FEATURE 5: ÖZEL ARKA PLAN TEMALARI
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildThemeStageCard(Icons.flag_rounded, "VATAN", false),
-            const SizedBox(width: 8),
-            _buildThemeStageCard(Icons.military_tech_rounded, "PRO TEMA", true),
-            const SizedBox(width: 8),
-            _buildThemeStageCard(Icons.shield_rounded, "TAKTİK", false),
-          ],
-        );
-    }
-  }
-
-  Widget _buildThemeStageCard(IconData icon, String label, bool isHighlighted) {
-    return Container(
-      width: isHighlighted ? 78 : 66,
-      padding: EdgeInsets.symmetric(
-        horizontal: 8,
-        vertical: isHighlighted ? 14 : 10,
-      ),
-      decoration: BoxDecoration(
-        color: isHighlighted ? const Color(0xFF222530) : const Color(0xFF1A1C24),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isHighlighted ? Colors.white : const Color(0xFF2C303E),
-          width: isHighlighted ? 1.4 : 1.0,
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isHighlighted ? const Color(0xFFFFD700) : Colors.white70,
-            size: isHighlighted ? 22 : 17,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: isHighlighted ? Colors.white : const Color(0xFF8E92A0),
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.4,
-            ),
-          ),
-        ],
-      ),
+
+        const Text(
+          "Uygulamayı açmadan telefon kilit ekranında canlı takip",
+          style: TextStyle(color: Color(0xFF787E92), fontSize: 8.5, fontWeight: FontWeight.w600),
+        ),
+      ],
     );
   }
 
-  Widget _buildAvatarPill(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1C24),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF2C303E)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF8E92A0),
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
+  // SCENARIO 2: TIME CAPSULE (KİLİTLİ ZAMAN KAPSÜLÜ)
+  Widget _buildTimeCapsuleSimulation() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Envelope & Wax Seal Header
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1A16),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF3E3224)),
           ),
-        ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.mail_lock_rounded, color: Color(0xFFF59E0B), size: 14),
+                    SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        "MÜHÜRLÜ ZAMAN KAPSÜLÜ",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: Color(0xFFF59E0B), fontSize: 9, fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  "100. GÜN",
+                  style: TextStyle(color: Color(0xFFF59E0B), fontSize: 8, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Live Audio Player Simulation
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF141720),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF262D3E)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF59E0B),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Sevdiğinden Gizli Ses Kaydı & Fotoğraf",
+                      style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    AnimatedBuilder(
+                      animation: _waveController,
+                      builder: (_, __) {
+                        final v = _waveController.value;
+                        return Row(
+                          children: [
+                            _buildWaveBar(5 + 8 * v),
+                            const SizedBox(width: 2.5),
+                            _buildWaveBar(14 - 8 * v),
+                            const SizedBox(width: 2.5),
+                            _buildWaveBar(7 + 10 * ((v + 0.3) % 1.0)),
+                            const SizedBox(width: 2.5),
+                            _buildWaveBar(16 - 10 * ((v + 0.6) % 1.0)),
+                            const SizedBox(width: 2.5),
+                            _buildWaveBar(9 + 6 * v),
+                            const SizedBox(width: 2.5),
+                            _buildWaveBar(12 - 7 * v),
+                            const SizedBox(width: 8),
+                            const Text(
+                              "0:28 / 1:45",
+                              style: TextStyle(color: Color(0xFFF59E0B), fontSize: 8.5, fontFamily: 'monospace'),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const Text(
+          "O gün gelene kadar kimse açamaz; zamanı gelince telefonunuza bildirim gelir.",
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF787E92), fontSize: 8.5),
+        ),
+      ],
+    );
+  }
+
+  // SCENARIO 3: 4K THEMES & CUSTOM PHOTO
+  Widget _buildThemesAndPhotoSimulation() {
+    final activeTheme = _previewThemes[_selectedThemePreviewIndex];
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // 3 Real App Theme Previews with Actual Images
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(_previewThemes.length, (index) {
+            final theme = _previewThemes[index];
+            final bool isSelected = _selectedThemePreviewIndex == index;
+            return _buildThemeMiniPreview(
+              title: theme['title']!,
+              imagePath: theme['image']!,
+              tag: theme['tag']!,
+              isActive: isSelected,
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _selectedThemePreviewIndex = index;
+                });
+              },
+            );
+          }),
+        ),
+
+        // Personalized Gold Plate Card
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2E2A1C), Color(0xFF1B1810)],
+            ),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF85682A), width: 1.2),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFBBF24), size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "$_userRank $_userName",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFFDE68A),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                          Text(
+                            "$_userDutyLocation • ${activeTheme['detail']}",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Color(0xFFD97706), fontSize: 8),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                "4K ULTRA HD",
+                style: TextStyle(
+                  color: Color(0xFFFBBF24),
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const Text(
+          "Kendi özel fotoğrafını yükle veya 40+ 4K askeri temayla kişiselleştir",
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: Color(0xFF787E92), fontSize: 8.5),
+        ),
+      ],
+    );
+  }
+
+  // SCENARIO 4: 1v1 DUEL ARENA (CANLI ASKER DÜELLOSU)
+  Widget _buildDuelArenaSimulation() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Match Header
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF8B5CF6)),
+                ),
+                child: Text(
+                  "$_userName (850)",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Text(
+              "⚔️ 1v1 DÜELLO",
+              style: TextStyle(color: Color(0xFFFBBF24), fontSize: 8.5, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(width: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                "Rakip (700)",
+                style: TextStyle(color: Color(0xFF8E92A0), fontSize: 8),
+              ),
+            ),
+          ],
+        ),
+
+        // Live Question Box
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF191B26),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFF2C3246)),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Soru 8: Çanakkale Zaferi hangi yılda gerçekleşti?",
+                style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: 5),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "A) 1914",
+                      style: TextStyle(color: Color(0xFF787C8B), fontSize: 8),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      "B) 1915 ✓",
+                      style: TextStyle(color: Color(0xFF10B981), fontSize: 8.5, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Victory Crown
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+            ),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.workspace_premium_rounded, color: Color(0xFFFBBF24), size: 12),
+              SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  "KIŞLA 1.'Sİ • VIP ALTIN ROZET",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // SCENARIO 5: ZERO ADS COMPARISON
+  Widget _buildZeroAdsComparisonSimulation() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            // Standard / Free side
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1315),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF3E2024)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.close_rounded, color: Color(0xFFEF4444), size: 11),
+                        SizedBox(width: 3),
+                        Text(
+                          "ÜCRETSİZ",
+                          style: TextStyle(color: Color(0xFFEF4444), fontSize: 8.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "• Pop-up reklamlar\n• 5 sn bekleme süresi\n• Sınırlı özellikler",
+                      style: TextStyle(color: Color(0xFF8E92A0), fontSize: 8, height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // PRO side
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10261E),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF10B981)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 11),
+                        SizedBox(width: 3),
+                        Text(
+                          "PRO SÜRÜM",
+                          style: TextStyle(color: Color(0xFF10B981), fontSize: 8.5, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      "• %100 Sıfır Reklam\n• Anında pürüzsüz açılış\n• Tüm VIP özellikler açık",
+                      style: TextStyle(color: Colors.white, fontSize: 8, height: 1.3, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFF161922),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Text(
+            "Hiçbir reklam olmadan sadece sevdiğine ve şafağına odaklan",
+            style: TextStyle(color: Color(0xFF10B981), fontSize: 8.5, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniProfile({
+    required IconData icon,
+    required Color iconColor,
+    required String name,
+    required String location,
+    required String label,
+  }) {
+    return Column(
+      children: [
+        Stack(
+          alignment: Alignment.bottomRight,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E2230),
+                shape: BoxShape.circle,
+                border: Border.all(color: iconColor.withValues(alpha: 0.6), width: 1.5),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                color: Color(0xFF10B981),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          name,
+          style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.bold),
+        ),
+        Text(
+          location,
+          style: const TextStyle(color: Color(0xFF787C8B), fontSize: 8),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildThemeMiniPreview({
+    required String title,
+    required String imagePath,
+    required String tag,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        width: 80,
+        height: 58,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color: isActive ? const Color(0xFFF59E0B) : const Color(0xFF2C3246),
+            width: isActive ? 2.0 : 1.0,
+          ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(7.5),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Gerçek Uygulama Tema Görseli
+              Image.asset(
+                imagePath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  color: const Color(0xFF1E293B),
+                  child: const Icon(Icons.image, color: Colors.white24, size: 18),
+                ),
+              ),
+
+              // Metin okunabilirliği için alt gradyan
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.15),
+                      Colors.black.withValues(alpha: 0.88),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Sağ üst rozet
+              Positioned(
+                top: 3,
+                right: 3,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: isActive ? const Color(0xFFF59E0B) : Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    isActive ? "SEÇİLİ" : tag,
+                    style: TextStyle(
+                      color: isActive ? Colors.black : const Color(0xFFFDE68A),
+                      fontSize: 6.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Alt başlık
+              Positioned(
+                bottom: 3,
+                left: 3,
+                right: 3,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 8,
+                    fontWeight: isActive ? FontWeight.w900 : FontWeight.w700,
+                    shadows: const [
+                      Shadow(color: Colors.black, blurRadius: 4),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildWaveBar(double height) {
     return Container(
-      width: 2.5,
-      height: height.clamp(4.0, 18.0),
+      width: 3,
+      height: height.clamp(4.0, 20.0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFFF59E0B),
         borderRadius: BorderRadius.circular(2),
       ),
     );
   }
 
   // ==========================================
-  // REAL USER TESTIMONIAL & SOCIAL PROOF
+  // HEADLINE & SUBHEADLINE TEXT
+  // ==========================================
+  Widget _buildFeatureHeadline() {
+    final currentFeature = _features[_currentFeatureIndex];
+
+    return SlideTransition(
+      position: _textSlide,
+      child: FadeTransition(
+        opacity: _textFade,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1F222B),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                currentFeature['tag'] as String,
+                style: const TextStyle(
+                  color: Color(0xFF8E92A0),
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              currentFeature['headline'] as String,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+                height: 1.18,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              currentFeature['sub'] as String,
+              style: const TextStyle(
+                color: Color(0xFF8E92A0),
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==========================================
+  // TESTIMONIAL CARD
   // ==========================================
   Widget _buildUserTestimonialCard() {
     final t = _testimonials[_currentQuoteIndex];
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        setState(() {
-          _currentQuoteIndex = (_currentQuoteIndex + 1) % _testimonials.length;
-        });
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF14151B),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF22242D)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: List.generate(
-                    5,
-                    (i) => const Padding(
-                      padding: EdgeInsets.only(right: 2.0),
-                      child: Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 14),
-                    ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF12141A),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF222530)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: List.generate(
+                  5,
+                  (i) => const Padding(
+                    padding: EdgeInsets.only(right: 2.0),
+                    child: Icon(Icons.star_rounded, color: Color(0xFFF59E0B), size: 13),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E2028),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: const Color(0xFF2C303E)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 10),
-                      const SizedBox(width: 4),
-                      Text(
-                        t['tag']!,
-                        style: const TextStyle(
-                          color: Color(0xFF8E92A0),
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              t['quote']!,
-              style: const TextStyle(
-                color: Color(0xFFE2E4EC),
-                fontSize: 12,
-                height: 1.35,
-                fontStyle: FontStyle.italic,
               ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "${t['author']} • ${t['location']}",
-                  style: const TextStyle(
-                    color: Color(0xFF787C8B),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E2028),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFF2C303E)),
                 ),
-                Row(
-                  children: List.generate(_testimonials.length, (i) {
-                    return Container(
-                      margin: const EdgeInsets.only(left: 3),
-                      width: 5,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: i == _currentQuoteIndex
-                            ? Colors.white
-                            : const Color(0xFF323644),
-                        shape: BoxShape.circle,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.verified_rounded, color: Color(0xFF10B981), size: 10),
+                    const SizedBox(width: 4),
+                    Text(
+                      t['tag']!,
+                      style: const TextStyle(
+                        color: Color(0xFF8E92A0),
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
                       ),
-                    );
-                  }),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            t['quote']!,
+            style: const TextStyle(
+              color: Color(0xFFE2E4EC),
+              fontSize: 11.5,
+              height: 1.35,
+              fontStyle: FontStyle.italic,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "${t['author']} • ${t['location']}",
+                style: const TextStyle(
+                  color: Color(0xFF787C8B),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Row(
+                children: List.generate(_testimonials.length, (i) {
+                  return Container(
+                    margin: const EdgeInsets.only(left: 3),
+                    width: 5,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: i == _currentQuoteIndex ? Colors.white : const Color(0xFF323644),
+                      shape: BoxShape.circle,
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1194,7 +2048,7 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
   }
 
   // ==========================================
-  // PLAN SELECTOR (SOLID MATTE)
+  // PLAN SELECTOR
   // ==========================================
   Widget _buildPlanSelector() {
     final String annualPrice = _annualPackage?.storeProduct.priceString ?? '₺199,99';
@@ -1258,7 +2112,6 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
         ),
         child: Row(
           children: [
-            // Radio circle
             Container(
               width: 18,
               height: 18,
@@ -1277,8 +2130,6 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
                   : null,
             ),
             const SizedBox(width: 12),
-
-            // Plan Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1325,8 +2176,6 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
                 ],
               ),
             ),
-
-            // Price Right
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -1354,7 +2203,7 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
   }
 
   // ==========================================
-  // ACTION BUTTON (SOLID - ZERO GRADIENT)
+  // ACTION BUTTON
   // ==========================================
   Widget _buildActionButton() {
     if (RevenueCatService.instance.isUserRelative) {
@@ -1370,10 +2219,7 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
           ),
           onPressed: () {
             HapticFeedback.heavyImpact();
-            _showSuccessDialog(
-              title: "Asker Yakını Ayrıcalığı 💕",
-              message: "Tüm PRO özellikler asker yakınlarımıza özel olarak tamamen ücretsiz tanımlanmıştır. Keyifle kullanabilirsiniz!",
-            );
+            _navigateToHomeOrClose();
           },
           child: const Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1443,9 +2289,11 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
         Center(
           child: Text(
             trialNote,
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Color(0xFF6B7082),
+              color: Color(0xFF8E94A6),
               fontSize: 11.5,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -1453,7 +2301,7 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildLink("Kullanım Koşulları", "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"),
+            _buildLink("Kullanım Koşulları (EULA)", "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Text("•", style: TextStyle(color: Color(0xFF4A4E5E))),
@@ -1461,22 +2309,26 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
             _buildLink("Gizlilik Politikası", "https://safaksayar.vercel.app/#/privacy"),
           ],
         ),
-        const SizedBox(height: 14),
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => Navigator.pop(context),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            child: Text(
-              "Şimdilik Ücretsiz Devam Et",
-              style: TextStyle(
-                color: Color(0xFF8E92A0),
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
+        if (!_isNecessaryProScreen) ...[
+          const SizedBox(height: 12),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _dismissPaywall,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 12),
+              child: Text(
+                "Şimdilik Ücretsiz Devam Et",
+                style: TextStyle(
+                  color: Color(0xFF787C8B),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                  decorationColor: Color(0xFF787C8B),
+                ),
               ),
             ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -1494,4 +2346,39 @@ class _PremiumPaywallPageState extends State<PremiumPaywallPage>
       ),
     );
   }
+}
+
+/// Custom ECG wave painter for live dual heartbeat animation
+class _EcWavePainter extends CustomPainter {
+  final double progress;
+
+  _EcWavePainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFE11D48)
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke;
+
+    final path = Path();
+    path.moveTo(0, size.height * 0.5);
+    path.lineTo(size.width * 0.25, size.height * 0.5);
+    path.lineTo(size.width * 0.35, size.height * 0.1);
+    path.lineTo(size.width * 0.5, size.height * 0.9);
+    path.lineTo(size.width * 0.65, size.height * 0.3);
+    path.lineTo(size.width * 0.75, size.height * 0.5);
+    path.lineTo(size.width, size.height * 0.5);
+
+    canvas.drawPath(path, paint);
+
+    // Moving glowing particle
+    final dotX = size.width * progress;
+    final dotY = size.height * 0.5;
+    final dotPaint = Paint()..color = const Color(0xFFFBBF24);
+    canvas.drawCircle(Offset(dotX, dotY), 2.5, dotPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _EcWavePainter oldDelegate) => true;
 }

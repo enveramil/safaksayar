@@ -7,7 +7,39 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:safaksayar/Services/soldier_match_service.dart';
 import 'package:safaksayar/Services/revenue_cat_service.dart';
+import 'package:safaksayar/Services/log_service.dart';
+import 'package:safaksayar/Services/app_config_service.dart';
 import 'package:safaksayar/pages/premium_paywall_page.dart';
+import 'package:safaksayar/widgets/setup_ui.dart';
+
+/// Sülüs bilgilerinden terhis tarihini hesaplar; eksik bilgi varsa null döner.
+DateTime? calculateTerhisDate({
+  required DateTime? sulusDate,
+  required int? durationMonths,
+  required String? yolIzni,
+  required int izinGunu,
+  required int cezaGunu,
+}) {
+  const yolIzniGunleri = {
+    '1 (Terhis)': 0,
+    '1+1 (İzin)': 1,
+    '2 (Terhis)': -1,
+    '2+2 (İzin)': 1,
+    '3 (Terhis)': -2,
+    '3+3 (İzin)': 1,
+  };
+  const sureDuzeltmeleri = {1: 0, 6: 5, 12: 11};
+
+  final int? yolIzniGunu = yolIzniGunleri[yolIzni];
+  final int? sureDuzeltmesi = sureDuzeltmeleri[durationMonths];
+  if (sulusDate == null || yolIzniGunu == null || sureDuzeltmesi == null) return null;
+
+  return DateTime(
+    sulusDate.year,
+    sulusDate.month + durationMonths!,
+    sulusDate.day + izinGunu + cezaGunu - yolIzniGunu - sureDuzeltmesi,
+  );
+}
 
 class UserInputPage extends StatefulWidget {
   final String? initialRole; // 'asker' or 'yakin'
@@ -30,12 +62,27 @@ class _UserInputPageState extends State<UserInputPage> {
   final _izinController = TextEditingController();
   final _cezaController = TextEditingController();
   String? yolIzni;
-  int? yolIzniDisplay;
+  static const int _stepCount = 3;
   int _currentStep = 0; // Çok adımlı form için adımlar
+  bool _isMovingForward = true;
+  bool _showValidation = false;
   String _userRole = 'asker';
   String? _relationship;
 
   bool get _isRelative => _userRole == 'yakin';
+
+  DateTime? get _calculatedEndDate => calculateTerhisDate(
+        sulusDate: _selectedDate,
+        durationMonths: selectedDuration,
+        yolIzni: yolIzni,
+        izinGunu: int.tryParse(_izinController.text) ?? 0,
+        cezaGunu: int.tryParse(_cezaController.text) ?? 0,
+      );
+
+  String? _storedChoice(SharedPreferences prefs, String key) {
+    final String? value = prefs.getString(key);
+    return value == null || value.isEmpty ? null : value;
+  }
 
   // Türkiye'nin 81 ili
   final List<String> iller = [
@@ -128,91 +175,6 @@ class _UserInputPageState extends State<UserInputPage> {
     _loadData(); // Sayfa yüklendiğinde kayıtlı verileri çek
   }
 
-  Future<void> _showCupertinoDatePicker(BuildContext context) async {
-    DateTime tempSelectedDate = _selectedDate ?? DateTime.now(); // Geçici tarih
-
-    showModalBottomSheet(
-      backgroundColor: Colors.transparent,
-      context: context,
-      builder: (BuildContext builder) {
-        return Container(
-          height: 320,
-          decoration: const BoxDecoration(
-            color: Color(0xFF1E293B),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 45,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop(); // İptal
-                      },
-                      child: Text(
-                        'İptal',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const Text(
-                      'Sülüs Tarihi',
-                      style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _selectedDate = tempSelectedDate; // Seçili olan tarihi ayarla
-                        });
-                        Navigator.of(context).pop(); // Onay
-                      },
-                      child: const Text(
-                        'Tamam',
-                        style: TextStyle(color: Colors.blueAccent, fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(color: Colors.white12, height: 1),
-              Expanded(
-                child: CupertinoTheme(
-                  data: const CupertinoThemeData(
-                    brightness: Brightness.dark,
-                    textTheme: CupertinoTextThemeData(
-                      dateTimePickerTextStyle: TextStyle(color: Colors.white, fontSize: 18),
-                    ),
-                  ),
-                  child: CupertinoDatePicker(
-                    mode: CupertinoDatePickerMode.date,
-                    initialDateTime: tempSelectedDate,
-                    minimumDate: DateTime(2000),
-                    maximumDate: DateTime(2100),
-                    onDateTimeChanged: (DateTime date) {
-                      tempSelectedDate = date; // Geçici tarihi güncelle
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _loadData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -220,21 +182,21 @@ class _UserInputPageState extends State<UserInputPage> {
       _relationship = widget.initialRelationship ?? prefs.getString('relationship');
       _nameController.text = prefs.getString('name') ?? '';
       _surnameController.text = prefs.getString('surname') ?? '';
-      _selectedAskerlikYeri = prefs.getString('askerlik_yeri');
-      _selectedMemleket = prefs.getString('memleket');
+      _selectedAskerlikYeri = _storedChoice(prefs, 'askerlik_yeri');
+      _selectedMemleket = _storedChoice(prefs, 'memleket');
       _selectedKuvvetKomutanligi =
-          prefs.getString('kuvvet_komutanligi'); // Yeni eklenen alan
+          _storedChoice(prefs, 'kuvvet_komutanligi'); // Yeni eklenen alan
       String? storedDate = prefs.getString('sulus_tarihi');
-      rutbe = prefs.getString('rutbe');
+      rutbe = _storedChoice(prefs, 'rutbe');
       _izinController.text =
           prefs.getInt('izin')?.toString() ?? '0'; // Load izin
       _cezaController.text =
           prefs.getInt('ceza')?.toString() ?? '0'; // Load ceza
-      yolIzni = prefs.getString('yolIzni');
+      yolIzni = _storedChoice(prefs, 'yolIzni');
       // Ensure this line retrieves the correct key
       selectedDuration = prefs.getInt('duration'); // Correct key name
       if (storedDate != null) {
-        _selectedDate = DateTime.parse(storedDate);
+        _selectedDate = DateTime.tryParse(storedDate);
       }
     });
   }
@@ -260,59 +222,13 @@ class _UserInputPageState extends State<UserInputPage> {
 
 // Verileri SharedPreferences'a kaydet
   Future<void> _saveData() async {
-    DateTime endDate = DateTime.now();
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    final DateTime? calculatedEndDate = _calculatedEndDate;
 
-    // Calculate the end date by adding the selected duration (in months) to the selected sülüs date
-    if (_selectedDate != null && selectedDuration != null) {
-      if (yolIzni == '1 (Terhis)') {
-        yolIzniDisplay = 0;
-      } else if (yolIzni == '1+1 (İzin)') {
-        yolIzniDisplay = 1;
-      } else if (yolIzni == '2 (Terhis)') {
-        yolIzniDisplay = -1;
-      } else if (yolIzni == '2+2 (İzin)') {
-        yolIzniDisplay = 1;
-      } else if (yolIzni == '3 (Terhis)') {
-        yolIzniDisplay = -2;
-      } else if (yolIzni == '3+3 (İzin)') {
-        yolIzniDisplay = 1;
-      }
-      // Toplam süreyi hesapla (izin ve ceza günleri eklenmiş)
+    if (calculatedEndDate != null) {
+      final DateTime endDate = calculatedEndDate;
       int izinGunu = int.tryParse(_izinController.text) ?? 0; // Kullanılan izin günleri
       int cezaGunu = int.tryParse(_cezaController.text) ?? 0; // Alınan ceza günleri
-
-      if (selectedDuration == 1) {
-        // Süreyi, izin ve ceza günlerini hesaba katarak bitiş tarihini hesapla
-        endDate = DateTime(
-          _selectedDate!.year,
-          _selectedDate!.month + selectedDuration!,
-          _selectedDate!.day +
-              izinGunu +
-              cezaGunu -
-              yolIzniDisplay!, // İzin ve ceza günleri eklendi
-        );
-      } else if (selectedDuration == 6) {
-        endDate = DateTime(
-          _selectedDate!.year,
-          _selectedDate!.month + selectedDuration!,
-          _selectedDate!.day +
-              izinGunu +
-              cezaGunu -
-              yolIzniDisplay! -
-              5, // İzin ve ceza günleri eklendi
-        );
-      } else if (selectedDuration == 12) {
-        endDate = DateTime(
-          _selectedDate!.year,
-          _selectedDate!.month + selectedDuration!,
-          _selectedDate!.day +
-              izinGunu +
-              cezaGunu -
-              yolIzniDisplay! -
-              11, // İzin ve ceza günleri eklendi
-        );
-      }
 
       // Verileri kaydet
       await prefs.setString('name', _nameController.text);
@@ -360,6 +276,16 @@ class _UserInputPageState extends State<UserInputPage> {
           userId = DateTime.now().millisecondsSinceEpoch.toString();
           await prefs.setString('userId', userId);
         }
+      }
+
+      if (userId.isNotEmpty) {
+        LogService.instance.setUserId(userId);
+        LogService.instance.setUserInfo(
+          name: _nameController.text,
+          surname: _surnameController.text,
+          role: _userRole,
+          rutbe: rutbe,
+        );
       }
 
       // Generate or retrieve tracking code
@@ -410,61 +336,14 @@ class _UserInputPageState extends State<UserInputPage> {
     }
   }
 
-  void _showLoadingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return PopScope(
-          canPop: false, // Geri tuşu ile kapatılmasını engelle
-          child: Dialog(
-            backgroundColor: const Color(0xFF1E293B),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 28.0, horizontal: 24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blueAccent),
-                    strokeWidth: 3.5,
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Şafak Hesaplanıyor',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Verileriniz kaydediliyor ve profiliniz oluşturuluyor, lütfen bekleyin...',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   // Formu göndermek ve başka bir sayfaya yönlendirmek
   void _submitForm() async {
+    FocusScope.of(context).unfocus();
     if (_nameController.text.isNotEmpty &&
         _surnameController.text.isNotEmpty &&
         _selectedDate != null &&
         selectedDuration != null &&
+        yolIzni != null &&
         _selectedAskerlikYeri != null &&
         _selectedMemleket != null &&
         _selectedKuvvetKomutanligi != null &&
@@ -484,20 +363,25 @@ class _UserInputPageState extends State<UserInputPage> {
         Navigator.of(context).pop();
 
         final prefs = await SharedPreferences.getInstance();
+        if (!mounted) return;
         final themeImage = prefs.getString('themeImage') ?? 'assets/images/img0.webp';
 
-        // Kullanıcı henüz premium değilse, şafak bilgilerini kaydettikten sonra paywall ekranını göster
-        if (!RevenueCatService.instance.isPremium) {
+        // Kullanıcı henüz premium değilse ve asker yakını değilse, PRO tanıtım / kapı sayfasını göster
+        final bool isNecessary = AppConfigService.instance.isNecessaryProScreen;
+        if (!RevenueCatService.instance.isPremium && _userRole != 'yakin') {
           await Navigator.of(context).push(
             MaterialPageRoute(
               settings: const RouteSettings(name: 'PremiumPaywallPage'),
-              builder: (_) => const PremiumPaywallPage(source: 'post_info_save'),
+              builder: (_) => PremiumPaywallPage(
+                source: 'post_info_save',
+                isGate: isNecessary,
+              ),
             ),
           );
         }
 
         if (mounted) {
-          // Ana sayfaya yönlendir
+          // Paywall zorunluyken kapatılamaz; buraya dönüldüyse kullanıcı çarpıyla geçmiştir veya PRO/yakındır
           await Navigator.of(context).pushAndRemoveUntil(
             _customPageRoute(ManagePages(backgroundImage: themeImage), 'ManagePages'),
             (Route<dynamic> route) => false,
@@ -505,10 +389,16 @@ class _UserInputPageState extends State<UserInputPage> {
         }
       }
     } else {
-      // Eksik alanlar varsa uyarı gösterebilirsin
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen tüm alanları doldurunuz')),
-      );
+      // Önceki adımlarda eksik kalan alan varsa o adıma dön ve alanı işaretle
+      for (int step = 0; step < _stepCount; step++) {
+        if (!_validateStep(step)) {
+          setState(() {
+            _isMovingForward = false;
+            _currentStep = step;
+          });
+          return;
+        }
+      }
     }
   }
 
@@ -521,101 +411,158 @@ class _UserInputPageState extends State<UserInputPage> {
     super.dispose();
   }
 
-  void _nextStep() {
-    if (_currentStep == 0) {
-      if (_nameController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen adınızı girin.')),
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black87,
+      builder: (BuildContext context) {
+        return PopScope(
+          canPop: false, // Geri tuşu ile kapatılmasını engelle
+          child: Dialog(
+            backgroundColor: SetupColors.surfaceRaised,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28.0, horizontal: 24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(SetupColors.gold),
+                    strokeWidth: 3.5,
+                  ),
+                  SizedBox(height: 22),
+                  Text(
+                    'Şafağın Hesaplanıyor',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 7),
+                  Text(
+                    'Bilgilerin kaydediliyor, profilin hazırlanıyor.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: SetupColors.textMuted,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
-        return;
-      }
-      if (_surnameController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen soyadınızı girin.')),
-        );
-        return;
-      }
-      if (_selectedMemleket == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen memleketinizi seçin.')),
-        );
-        return;
-      }
-    } else if (_currentStep == 1) {
-      if (_selectedKuvvetKomutanligi == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen Kuvvet Komutanlığını seçin.')),
-        );
-        return;
-      }
-      if (rutbe == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen rütbenizi seçin.')),
-        );
-        return;
-      }
-      if (_selectedAskerlikYeri == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen görev yerinizi seçin.')),
-        );
-        return;
-      }
-      if (selectedDuration == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen askerlik sürenizi seçin.')),
-        );
-        return;
-      }
-    }
+      },
+    );
+  }
+
+  /// Geçerli adımın eksik alanlarını işaretler; adım tamamsa true döner.
+  bool _validateStep(int step) {
+    final bool isValid = switch (step) {
+      0 => _nameController.text.trim().isNotEmpty &&
+          _surnameController.text.trim().isNotEmpty &&
+          _selectedMemleket != null,
+      1 => _selectedKuvvetKomutanligi != null &&
+          rutbe != null &&
+          _selectedAskerlikYeri != null &&
+          selectedDuration != null,
+      _ => _selectedDate != null && yolIzni != null,
+    };
+
     setState(() {
+      _showValidation = !isValid;
+    });
+    if (!isValid) HapticFeedback.mediumImpact();
+    return isValid;
+  }
+
+  String? _errorIf(bool isMissing, String message) {
+    return _showValidation && isMissing ? message : null;
+  }
+
+  void _refreshValidation(String _) {
+    if (_showValidation) setState(() {});
+  }
+
+  void _nextStep() {
+    FocusScope.of(context).unfocus();
+    if (!_validateStep(_currentStep)) return;
+    setState(() {
+      _isMovingForward = true;
       _currentStep++;
     });
   }
 
   void _prevStep() {
+    FocusScope.of(context).unfocus();
     setState(() {
+      _isMovingForward = false;
+      _showValidation = false;
       _currentStep--;
     });
   }
 
+  void _handleBack() {
+    if (_currentStep > 0) {
+      _prevStep();
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
   Widget _buildHeader() {
+    final bool canGoBack = _currentStep > 0 || Navigator.canPop(context);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 20, 6),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Navigator.canPop(context)
-              ? GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: canGoBack ? SetupBackButton(onPressed: _handleBack) : null,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Row(
+              children: List.generate(_stepCount, (index) {
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(left: index == 0 ? 0 : 5),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: Stack(
+                        children: [
+                          Container(
+                            height: 5,
+                            color: Colors.white.withValues(alpha: 0.12),
+                          ),
+                          AnimatedFractionallySizedBox(
+                            duration: const Duration(milliseconds: 320),
+                            curve: Curves.easeOutCubic,
+                            widthFactor: index <= _currentStep ? 1 : 0,
+                            child: Container(height: 5, color: SetupColors.gold),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 16),
                   ),
-                )
-              : const SizedBox(width: 38),
+                );
+              }),
+            ),
+          ),
+          const SizedBox(width: 12),
           Text(
-            _isRelative ? 'Asker Şafak Kurulumu' : 'Kurulum Sihirbazı',
+            '${_currentStep + 1}/$_stepCount',
             style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              shape: BoxShape.circle,
-            ),
-            child: const CircleAvatar(
-              radius: 14,
-              backgroundImage: AssetImage('assets/images/app_logo.png'),
+              color: SetupColors.textMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -623,66 +570,27 @@ class _UserInputPageState extends State<UserInputPage> {
     );
   }
 
-  Widget _buildStepIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                _getStepTitle(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                'Adım ${_currentStep + 1} / 3',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: List.generate(3, (index) {
-              final bool isActive = index <= _currentStep;
-              return Expanded(
-                child: Container(
-                  height: 4,
-                  margin: EdgeInsets.only(
-                    left: index == 0 ? 0 : 4,
-                    right: index == 2 ? 0 : 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isActive ? Colors.blueAccent : Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getStepTitle() {
+  String get _stepTitle {
     switch (_currentStep) {
       case 0:
-        return _isRelative ? 'Askerinizin Kimliği' : 'Kişisel Profil';
+        return _isRelative ? 'Askerini tanıyalım' : 'Seni tanıyalım';
       case 1:
-        return _isRelative ? 'Askerinizin Görevi' : 'Askerlik Bilgileri';
-      case 2:
-        return _isRelative ? 'Sülüs & İzinler' : 'Tarih & İzinler';
+        return _isRelative ? 'Askerinin görevi' : 'Askerlik bilgilerin';
       default:
-        return '';
+        return 'Şafağını hesaplayalım';
+    }
+  }
+
+  String get _stepSubtitle {
+    switch (_currentStep) {
+      case 0:
+        return _isRelative
+            ? 'Şafak kartında askerinin bilgileri görünecek.'
+            : 'Şafak kartında ve künyende bu bilgiler görünecek.';
+      case 1:
+        return 'Kuvvet, rütbe ve görev yerine göre arayüz şekillenecek.';
+      default:
+        return 'Terhis tarihi girdiğin bilgilere göre anında hesaplanır.';
     }
   }
 
@@ -692,39 +600,48 @@ class _UserInputPageState extends State<UserInputPage> {
         return _buildStep0();
       case 1:
         return _buildStep1();
-      case 2:
-        return _buildStep2();
       default:
-        return const SizedBox.shrink();
+        return _buildStep2();
     }
   }
 
   Widget _buildStep0() {
     return Column(
       children: [
-        const SizedBox(height: 12),
-        buildTextField(
+        SetupTextField(
           controller: _nameController,
-          label: _isRelative ? 'Askerinizin Adı' : 'Adınız',
-          icon: Icons.person_outline,
+          label: _isRelative ? 'Askerinin adı' : 'Adın',
+          hint: 'Örn: Mehmet',
+          icon: Icons.person_outline_rounded,
+          errorText: _errorIf(_nameController.text.trim().isEmpty, 'Lütfen adı girin.'),
+          onChanged: _refreshValidation,
         ),
         const SizedBox(height: 16),
-        buildTextField(
+        SetupTextField(
           controller: _surnameController,
-          label: _isRelative ? 'Askerinizin Soyadı' : 'Soyadınız',
+          label: _isRelative ? 'Askerinin soyadı' : 'Soyadın',
+          hint: 'Örn: Yılmaz',
           icon: Icons.badge_outlined,
+          textInputAction: TextInputAction.done,
+          errorText: _errorIf(_surnameController.text.trim().isEmpty, 'Lütfen soyadı girin.'),
+          onChanged: _refreshValidation,
+          onSubmitted: (_) => FocusScope.of(context).unfocus(),
         ),
         const SizedBox(height: 16),
-        buildDropdown(
-          label: _isRelative ? 'Askerinizin Memleketi (İl)' : 'Memleket (İl)',
+        SetupSelectField(
+          label: _isRelative ? 'Askerinin memleketi' : 'Memleketin',
+          hint: 'Şehir seç',
           value: _selectedMemleket,
-          hint: _isRelative ? 'Askerinizin memleketini seçin' : 'Memleketinizi seçin',
           icon: Icons.home_outlined,
-          items: iller,
-          onChanged: (value) {
-            setState(() {
-              _selectedMemleket = value;
-            });
+          errorText: _errorIf(_selectedMemleket == null, 'Lütfen memleketi seçin.'),
+          onTap: () async {
+            final value = await showSetupOptionSheet(
+              context: context,
+              title: 'Memleket',
+              items: iller,
+              selectedValue: _selectedMemleket,
+            );
+            if (value != null) setState(() => _selectedMemleket = value);
           },
         ),
       ],
@@ -732,193 +649,319 @@ class _UserInputPageState extends State<UserInputPage> {
   }
 
   Widget _buildStep1() {
+    const kuvvetler = ['Kara', 'Jandarma', 'Hava', 'Deniz'];
+    const rutbeler = ['ER', 'ONBAŞI', 'ÇAVUŞ', 'ASTÇAVUŞ', 'ASTSUBAY', 'ASTEĞMEN', 'TEĞMEN'];
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
-        buildDropdown(
-          label: 'Kuvvet Komutanlığı',
-          value: _selectedKuvvetKomutanligi,
-          hint: _isRelative ? 'Askerinizin kuvvetini seçin' : 'Kuvvetinizi seçin',
-          icon: Icons.military_tech_outlined,
-          items: ['Hava', 'Deniz', 'Kara', 'Jandarma'],
-          onChanged: (value) {
-            setState(() {
-              _selectedKuvvetKomutanligi = value;
-            });
-          },
+        const SetupFieldLabel('Kuvvet komutanlığı'),
+        SetupChoiceGrid(
+          columns: 2,
+          children: kuvvetler.map(_buildKuvvetTile).toList(),
         ),
-        const SizedBox(height: 16),
-        buildDropdown(
-          label: 'Rütbe',
-          value: rutbe,
-          hint: _isRelative ? 'Askerinizin rütbesini seçin' : 'Rütbenizi seçin',
-          icon: Icons.shield_outlined,
-          items: [
-            'ER',
-            'ONBAŞI',
-            'ÇAVUŞ',
-            'ASTÇAVUŞ',
-            'ASTSUBAY',
-            'ASTEĞMEN',
-            'TEĞMEN'
+        SetupFieldError(
+          _errorIf(_selectedKuvvetKomutanligi == null, 'Lütfen kuvveti seçin.'),
+        ),
+        const SizedBox(height: 18),
+        const SetupFieldLabel('Rütbe'),
+        SetupChoiceGrid(
+          columns: 3,
+          children: rutbeler.map((item) {
+            return SetupChoiceChip(
+              label: item,
+              isSelected: rutbe == item,
+              onTap: () => setState(() => rutbe = item),
+            );
+          }).toList(),
+        ),
+        SetupFieldError(_errorIf(rutbe == null, 'Lütfen rütbeyi seçin.')),
+        const SizedBox(height: 18),
+        const SetupFieldLabel('Askerlik süresi'),
+        SetupChoiceGrid(
+          columns: 3,
+          children: [
+            _buildDurationChip(12, '12 Ay'),
+            _buildDurationChip(6, '6 Ay'),
+            _buildDurationChip(1, '1 Ay', caption: 'Bedelli'),
           ],
-          onChanged: (value) {
-            setState(() {
-              rutbe = value;
-            });
-          },
         ),
-        const SizedBox(height: 16),
-        buildDropdown(
-          label: _isRelative ? 'Görev Yeri (İl)' : 'Görev Yeri (İl)',
+        SetupFieldError(_errorIf(selectedDuration == null, 'Lütfen süreyi seçin.')),
+        const SizedBox(height: 18),
+        SetupSelectField(
+          label: 'Görev yeri',
+          hint: 'Şehir seç',
           value: _selectedAskerlikYeri,
-          hint: _isRelative ? 'Askerinizin görev yerini seçin' : 'Görev yerinizi seçin',
           icon: Icons.location_on_outlined,
-          items: iller,
-          onChanged: (value) {
-            setState(() {
-              _selectedAskerlikYeri = value;
-            });
-          },
-        ),
-        const SizedBox(height: 16),
-        buildDropdown(
-          label: 'Askerlik Süresi',
-          value: selectedDuration == 1
-              ? '$selectedDuration Ay(Bedelli)'
-              : selectedDuration != null
-                  ? '$selectedDuration Ay'
-                  : null,
-          hint: _isRelative ? 'Askerlik süresini seçin' : 'Askerlik sürenizi seçin',
-          icon: Icons.schedule_outlined,
-          items: [1, 6, 12]
-              .map((e) => e == 1 ? '$e Ay(Bedelli)' : '$e Ay')
-              .toList(),
-          onChanged: (value) {
-            setState(() {
-              selectedDuration = int.tryParse(value?.split(' ')[0] ?? '');
-            });
+          errorText: _errorIf(_selectedAskerlikYeri == null, 'Lütfen görev yerini seçin.'),
+          onTap: () async {
+            final value = await showSetupOptionSheet(
+              context: context,
+              title: 'Görev Yeri',
+              items: iller,
+              selectedValue: _selectedAskerlikYeri,
+            );
+            if (value != null) setState(() => _selectedAskerlikYeri = value);
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildDurationChip(int months, String label, {String? caption}) {
+    return SetupChoiceChip(
+      label: label,
+      caption: caption,
+      isSelected: selectedDuration == months,
+      onTap: () => setState(() => selectedDuration = months),
+    );
+  }
+
+  Widget _buildKuvvetTile(String kuvvet) {
+    final bool isSelected = _selectedKuvvetKomutanligi == kuvvet;
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          FocusScope.of(context).unfocus();
+          HapticFeedback.selectionClick();
+          setState(() => _selectedKuvvetKomutanligi = kuvvet);
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? SetupColors.gold.withValues(alpha: 0.14)
+                : SetupColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? SetupColors.gold : SetupColors.border,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Image.asset('assets/images/$kuvvet.webp', width: 30, height: 34, fit: BoxFit.contain),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    kuvvet,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: isSelected ? SetupColors.goldLight : Colors.white,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildStep2() {
+    const yolIzinleri = [
+      '1 (Terhis)',
+      '2 (Terhis)',
+      '3 (Terhis)',
+      '1+1 (İzin)',
+      '2+2 (İzin)',
+      '3+3 (İzin)',
+    ];
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 12),
         _buildDatePicker(context),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
         Row(
           children: [
             Expanded(
-              child: buildTextField(
+              child: _buildDayCounter(
                 controller: _izinController,
-                label: _isRelative ? 'Kullanılan İzin (Gün)' : 'Kullanılan İzin',
-                icon: Icons.flight_takeoff_outlined,
-                inputType: TextInputType.number,
+                label: 'Kullanılan izin (gün)',
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
-              child: buildTextField(
+              child: _buildDayCounter(
                 controller: _cezaController,
-                label: _isRelative ? 'Alınan Ceza (Gün)' : 'Alınan Ceza',
-                icon: Icons.gavel_outlined,
-                inputType: TextInputType.number,
+                label: 'Alınan ceza (gün)',
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        buildDropdown(
-          label: 'Yol İzni (Gün)',
-          value: yolIzni,
-          hint: _isRelative ? 'Yol iznini seçin' : 'Yol izninizi seçin',
-          icon: Icons.commute_outlined,
-          items: [
-            '1 (Terhis)',
-            '1+1 (İzin)',
-            '2 (Terhis)',
-            '2+2 (İzin)',
-            '3 (Terhis)',
-            '3+3 (İzin)',
-          ],
-          onChanged: (value) {
-            setState(() {
-              yolIzni = value;
-            });
-          },
+        const SizedBox(height: 18),
+        const SetupFieldLabel('Yol izni (gün)'),
+        SetupChoiceGrid(
+          columns: 3,
+          children: yolIzinleri.map((item) {
+            final parts = item.split(' ');
+            return SetupChoiceChip(
+              label: parts[0],
+              caption: parts[1].replaceAll(RegExp(r'[()]'), ''),
+              isSelected: yolIzni == item,
+              onTap: () => setState(() => yolIzni = item),
+            );
+          }).toList(),
+        ),
+        SetupFieldError(_errorIf(yolIzni == null, 'Lütfen yol iznini seçin.')),
+        const SizedBox(height: 18),
+        _buildTerhisPreview(),
+      ],
+    );
+  }
+
+  Widget _buildDayCounter({
+    required TextEditingController controller,
+    required String label,
+  }) {
+    final int value = int.tryParse(controller.text) ?? 0;
+
+    void update(int next) {
+      HapticFeedback.selectionClick();
+      setState(() {
+        controller.text = next.toString();
+      });
+    }
+
+    Widget stepButton(IconData icon, String tooltip, VoidCallback? onTap) {
+      return IconButton(
+        icon: Icon(icon, size: 19),
+        tooltip: tooltip,
+        color: SetupColors.gold,
+        disabledColor: SetupColors.textFaint,
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 50),
+        padding: EdgeInsets.zero,
+        onPressed: onTap,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SetupFieldLabel(label),
+        Container(
+          height: 52,
+          decoration: setupFieldDecoration(),
+          child: Row(
+            children: [
+              stepButton(
+                Icons.remove_rounded,
+                'Azalt',
+                value > 0 ? () => update(value - 1) : null,
+              ),
+              Expanded(
+                child: Text(
+                  '$value',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              stepButton(Icons.add_rounded, 'Artır', () => update(value + 1)),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildBottomNavigation() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
+  Widget _buildTerhisPreview() {
+    final DateTime? endDate = _calculatedEndDate;
+    final int? remainingDays = endDate?.difference(DateTime.now()).inDays;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      width: double.infinity,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        gradient: endDate == null
+            ? null
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2E2A1C), Color(0xFF1B1810)],
+              ),
+        color: endDate == null ? SetupColors.surface : null,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: endDate == null ? SetupColors.border : const Color(0xFF85682A),
+          width: endDate == null ? 1 : 1.2,
+        ),
+      ),
       child: Row(
         children: [
-          if (_currentStep > 0) ...[
-            Expanded(
-              flex: 1,
-              child: OutlinedButton(
-                onPressed: _prevStep,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-                child: const Text(
-                  'Geri',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
+          Icon(
+            Icons.event_available_rounded,
+            color: endDate == null ? SetupColors.textFaint : SetupColors.gold,
+            size: 26,
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            flex: 2,
-            child: ElevatedButton(
-              onPressed: _currentStep < 2 ? _nextStep : _submitForm,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blueAccent,
-                foregroundColor: Colors.white,
-                shadowColor: Colors.blueAccent.withValues(alpha: 0.3),
-                elevation: 4,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _currentStep < 2 ? 'Devam Et' : 'Kaydet ve Başlat',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tahmini terhis tarihi',
+                  style: TextStyle(
+                    color: endDate == null ? SetupColors.textFaint : const Color(0xFFD9B566),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: 8),
-                  _currentStep < 2
-                      ? const Icon(Icons.arrow_forward, size: 18)
-                      : Image.asset(
-                          'assets/images/fast-forward.gif',
-                          height: 20,
-                        ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  endDate == null
+                      ? 'Sülüs ve yol iznini seç'
+                      : DateFormat('d MMMM yyyy', 'tr_TR').format(endDate),
+                  style: TextStyle(
+                    color: endDate == null ? SetupColors.textMuted : SetupColors.goldLight,
+                    fontSize: endDate == null ? 14 : 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
+          if (remainingDays != null && remainingDays > 0) ...[
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '$remainingDays',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    height: 1.1,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const Text(
+                  'gün kaldı',
+                  style: TextStyle(
+                    color: Color(0xFFD9B566),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -926,34 +969,71 @@ class _UserInputPageState extends State<UserInputPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLastStep = _currentStep == _stepCount - 1;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light, // For Android (white icons)
-        statusBarBrightness: Brightness.dark, // For iOS (white icons)
-      ),
-      child: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                _buildStepIndicator(),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    child: _buildStepContent(),
+      value: setupOverlayStyle,
+      child: PopScope(
+        canPop: _currentStep == 0,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) _prevStep();
+        },
+        child: Scaffold(
+          backgroundColor: SetupColors.background,
+          body: SetupBackground(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  _buildHeader(),
+                  Expanded(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: () => FocusScope.of(context).unfocus(),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 280),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        layoutBuilder: setupTopLayoutBuilder,
+                        transitionBuilder: (child, animation) {
+                          final double direction = _isMovingForward ? 1 : -1;
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(
+                              position: Tween<Offset>(
+                                begin: Offset(0.06 * direction, 0),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: SingleChildScrollView(
+                          key: ValueKey(_currentStep),
+                          physics: const BouncingScrollPhysics(),
+                          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                          padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SetupHeading(title: _stepTitle, subtitle: _stepSubtitle),
+                              const SizedBox(height: 22),
+                              _buildStepContent(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                _buildBottomNavigation(),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 14),
+                    child: SetupPrimaryButton(
+                      label: isLastStep ? 'Kaydet ve Başlat' : 'Devam Et',
+                      icon: isLastStep ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                      onPressed: isLastStep ? _submitForm : _nextStep,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -962,231 +1042,84 @@ class _UserInputPageState extends State<UserInputPage> {
   }
 
   Widget _buildDatePicker(BuildContext context) {
-    return GestureDetector(
+    final String? errorText = _errorIf(_selectedDate == null, 'Lütfen sülüs tarihini seçin.');
+
+    return SetupSelectField(
+      label: _isRelative ? 'Askerinin sülüs tarihi' : 'Sülüs tarihi',
+      hint: 'Tarih seç',
+      value: _selectedDate == null ? null : DateFormat('d MMMM yyyy', 'tr_TR').format(_selectedDate!),
+      icon: Icons.calendar_month_outlined,
+      errorText: errorText,
       onTap: () => _showCupertinoDatePicker(context),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_month_outlined, color: Colors.blueAccent, size: 22),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _isRelative ? 'Askerinizin Sülüs Tarihi' : 'Sülüs Tarihi',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _selectedDate == null
-                        ? (_isRelative ? 'Askerinizin Sülüs Tarihini Seçin' : 'Sülüs Tarihini Seçin')
-                        : DateFormat('dd.MM.yyyy').format(_selectedDate!),
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: _selectedDate == null ? Colors.white.withValues(alpha: 0.3) : Colors.white,
-                      fontWeight: _selectedDate == null ? FontWeight.w500 : FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_drop_down, color: Colors.white.withValues(alpha: 0.6)),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType inputType = TextInputType.text,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: inputType,
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.6),
-          fontWeight: FontWeight.w600,
-        ),
-        prefixIcon: Icon(icon, color: Colors.blueAccent, size: 22),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.04),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.blueAccent, width: 2.0),
-        ),
-      ),
-      style: const TextStyle(fontSize: 15, color: Colors.white),
-    );
-  }
-
-  Widget buildDropdown({
-    required String? value,
-    required String hint,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
-    required String label,
-    required IconData icon,
-  }) {
-    return GestureDetector(
-      onTap: () => _showCupertinoPicker(
-        context: context,
-        title: label,
-        items: items,
-        selectedValue: value,
-        onChanged: onChanged,
-      ),
-      child: InputDecorator(
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
-            fontWeight: FontWeight.w600,
-          ),
-          prefixIcon: Icon(icon, color: Colors.blueAccent, size: 22),
-          suffixIcon: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white.withValues(alpha: 0.6)),
-          filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.04),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.blueAccent, width: 2.0),
-          ),
-        ),
-        child: Text(
-          value ?? hint,
-          style: TextStyle(
-            fontSize: 15,
-            color: value != null ? Colors.white : Colors.white.withValues(alpha: 0.3),
-            fontWeight: value != null ? FontWeight.normal : FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showCupertinoPicker({
-    required BuildContext context,
-    required String title,
-    required List<String> items,
-    required String? selectedValue,
-    required ValueChanged<String?> onChanged,
-  }) {
-    int initialIndex = selectedValue != null ? items.indexOf(selectedValue) : 0;
-    if (initialIndex == -1) initialIndex = 0;
-    int tempIndex = initialIndex;
+  Future<void> _showCupertinoDatePicker(BuildContext context) async {
+    DateTime tempSelectedDate = _selectedDate ?? DateTime.now(); // Geçici tarih
 
     showModalBottomSheet(
       backgroundColor: Colors.transparent,
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext sheetContext) {
         return Container(
-          height: 320,
           decoration: const BoxDecoration(
-            color: Color(0xFF1E293B),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            color: SetupColors.surfaceRaised,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 45,
-                height: 5,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: Text(
-                        'İptal',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Text(
-                      title,
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        onChanged(items[tempIndex]);
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text(
-                        'Tamam',
-                        style: TextStyle(color: Colors.blueAccent, fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(color: Colors.white12, height: 1),
-              Expanded(
-                child: CupertinoTheme(
-                  data: const CupertinoThemeData(
-                    textTheme: CupertinoTextThemeData(
-                      pickerTextStyle: TextStyle(color: Colors.white, fontSize: 20),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  child: CupertinoPicker(
-                    scrollController: FixedExtentScrollController(initialItem: initialIndex),
-                    itemExtent: 44,
-                    onSelectedItemChanged: (int index) {
-                      tempIndex = index;
-                    },
-                    children: items.map((String item) {
-                      return Center(
-                        child: Text(
-                          item,
-                          style: const TextStyle(color: Colors.white, fontSize: 18),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Sülüs Tarihi',
+                    style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(
+                    height: 200,
+                    child: CupertinoTheme(
+                      data: const CupertinoThemeData(
+                        brightness: Brightness.dark,
+                        textTheme: CupertinoTextThemeData(
+                          dateTimePickerTextStyle: TextStyle(color: Colors.white, fontSize: 18),
                         ),
-                      );
-                    }).toList(),
+                      ),
+                      child: CupertinoDatePicker(
+                        mode: CupertinoDatePickerMode.date,
+                        initialDateTime: tempSelectedDate,
+                        minimumDate: DateTime(2000),
+                        maximumDate: DateTime(2100),
+                        onDateTimeChanged: (DateTime date) {
+                          tempSelectedDate = date; // Geçici tarihi güncelle
+                        },
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  SetupPrimaryButton(
+                    label: 'Tamam',
+                    icon: null,
+                    onPressed: () {
+                      setState(() {
+                        _selectedDate = tempSelectedDate; // Seçili olan tarihi ayarla
+                      });
+                      Navigator.of(sheetContext).pop(); // Onay
+                    },
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         );
       },

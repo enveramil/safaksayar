@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -8,20 +9,70 @@ class LogService {
   LogService._internal();
 
   String? _userId;
+  String? _userName;
+  String? _userRole;
+  String? _rutbe;
   String _currentPage = 'Açılış Ekranı';
   int _activeTabIndex = 0;
   DateTime? _pageStartTime;
   bool _isResumed = true;
+  Timer? _periodicFlushTimer;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    _userId = prefs.getString('logging_user_id');
-    if (_userId == null) {
-      _userId = 'kullanici_${DateTime.now().millisecondsSinceEpoch}_${(1000 + (9000 * (DateTime.now().microsecond % 100))).toInt()}';
-      await prefs.setString('logging_user_id', _userId!);
+    // Uygulamanın diğer servislerinde (FCM, RevenueCat, Eşleşme) kullanılan ana userId ile tam senkronize ol
+    final String? appUserId = prefs.getString('userId') ?? prefs.getString('user_id');
+    if (appUserId != null && appUserId.isNotEmpty) {
+      _userId = appUserId;
+      await prefs.setString('logging_user_id', appUserId);
+    } else {
+      _userId = prefs.getString('logging_user_id');
+      if (_userId == null || _userId!.isEmpty) {
+        _userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
+        await prefs.setString('userId', _userId!);
+        await prefs.setString('logging_user_id', _userId!);
+      }
     }
+
+    final String? name = prefs.getString('name');
+    final String? surname = prefs.getString('surname');
+    final fullName = '${name ?? ''} ${surname ?? ''}'.trim();
+    if (fullName.isNotEmpty) _userName = fullName;
+    _userRole = prefs.getString('user_role');
+    _rutbe = prefs.getString('rutbe');
+
+    _startPeriodicFlushTimer();
+  }
+
+  /// Harici olarak userId oluşturulduğunda LogService'i anında günceller
+  void setUserId(String userId) {
+    if (userId.isNotEmpty) {
+      _userId = userId;
+    }
+  }
+
+  /// Kullanıcı adı ve askeri bilgileri günceller
+  void setUserInfo({String? name, String? surname, String? role, String? rutbe}) {
+    final fullName = '${name ?? ''} ${surname ?? ''}'.trim();
+    if (fullName.isNotEmpty) _userName = fullName;
+    if (role != null && role.isNotEmpty) _userRole = role;
+    if (rutbe != null && rutbe.isNotEmpty) _rutbe = rutbe;
+  }
+
+  void _startPeriodicFlushTimer() {
+    _periodicFlushTimer?.cancel();
+    // Kullanıcı aynı ekranda uzun süre kalsa bile her 40 saniyede bir harcanan süreyi Firestore'a ve panele yansıt
+    _periodicFlushTimer = Timer.periodic(const Duration(seconds: 40), (_) {
+      if (_isResumed && _pageStartTime != null) {
+        final elapsed = DateTime.now().difference(_pageStartTime!).inSeconds;
+        if (elapsed >= 10) {
+          _saveTimeSpent(_currentPage, elapsed);
+          _pageStartTime = DateTime.now(); // Periyodu sıfırla
+        }
+      }
+    });
   }
 
   void onAppStart() {
@@ -144,6 +195,9 @@ class LogService {
       
       await _firestore.collection('logs').add({
         'userId': _userId ?? 'bilinmeyen_kullanıcı',
+        if (_userName != null && _userName!.isNotEmpty) 'userName': _userName,
+        if (_userRole != null && _userRole!.isNotEmpty) 'userRole': _userRole,
+        if (_rutbe != null && _rutbe!.isNotEmpty) 'rutbe': _rutbe,
         'timestamp': timestamp,
         'eventType': 'süre_harcandı',
         'pageName': page,
@@ -177,6 +231,22 @@ class LogService {
         }, SetOptions(merge: true));
       });
 
+      // 3. Kullanıcının users/{userId} tablosundaki günlük ve toplam ekran süresini artır
+      if (_userId != null && _userId!.isNotEmpty) {
+        unawaited(
+          _firestore.collection('users').doc(_userId).set({
+            'todayScreenTimeSeconds': FieldValue.increment(duration),
+            'totalScreenTimeSeconds': FieldValue.increment(duration),
+            'lastActiveAt': timestamp,
+            'updatedAt': timestamp,
+            'favoriteModule': page,
+            if (_userName != null && _userName!.isNotEmpty) 'name': _userName,
+            if (_userRole != null && _userRole!.isNotEmpty) 'user_role': _userRole,
+            if (_rutbe != null && _rutbe!.isNotEmpty) 'rutbe': _rutbe,
+          }, SetOptions(merge: true)),
+        );
+      }
+
     } catch (e) {
       debugPrint('Firestore logging error: $e');
     }
@@ -197,6 +267,9 @@ class LogService {
     try {
       await _firestore.collection('logs').add({
         'userId': _userId ?? 'bilinmeyen_kullanıcı',
+        if (_userName != null && _userName!.isNotEmpty) 'userName': _userName,
+        if (_userRole != null && _userRole!.isNotEmpty) 'userRole': _userRole,
+        if (_rutbe != null && _rutbe!.isNotEmpty) 'rutbe': _rutbe,
         'timestamp': FieldValue.serverTimestamp(),
         'eventType': 'tıklama',
         'pageName': page,
@@ -217,7 +290,7 @@ class LogService {
         if (target is RenderParagraph) {
           final text = target.text.toPlainText().trim();
           if (text.isNotEmpty) {
-            return text.length > 40 ? text.substring(0, 40) + '...' : text;
+            return text.length > 40 ? '${text.substring(0, 40)}...' : text;
           }
         }
       }

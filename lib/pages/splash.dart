@@ -3,6 +3,7 @@ import 'package:safaksayar/Services/soldier_match_service.dart';
 import 'package:safaksayar/pages/onboarding_showcase_page.dart';
 import 'package:safaksayar/pages/welcome_role_page.dart';
 import 'package:safaksayar/state_bottom_bar.dart';
+import 'package:safaksayar/widgets/setup_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -75,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: SetupColors.background,
       body: Center(
         child: Image.asset(
           'assets/images/app_logo.png',

@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'log_service.dart';
 import '../pages/chat_page.dart';
 import '../pages/millionaire/millionaire_duel_page.dart';
 
@@ -251,6 +252,7 @@ class FCMService {
         userId = 'user_${DateTime.now().millisecondsSinceEpoch}';
         await prefs.setString('userId', userId);
       }
+      LogService.instance.setUserId(userId);
 
       final String name = prefs.getString('name') ?? 'Asker';
       final String surname = prefs.getString('surname') ?? '';
